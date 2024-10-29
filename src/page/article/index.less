@@ -1,0 +1,46 @@
+.app-article{
+    min-height: 100vh;
+    height: calc(100% - 45px);
+    margin-top: 32px;
+    padding: 0 0 72px 0;
+    // background: url('../../../public/cback.jpeg');
+    // background-repeat: no-repeat;
+    // background-size: cover;
+    // background: #50a3a2;
+    // background: linear-gradient(to bottom right, #50a3a2 0%, #53e3a6 100%);
+    .post-header {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 1px solid #e8e8e8;
+        .post-title {
+          color: #0d1a26;
+          font-size: 1.7em;
+          font-weight: 400;
+          margin-top: 0;
+        }
+        .others {
+          a {
+            color: inherit;
+          }
+          vertical-align: middle;
+          margin-top: 10px;
+          color: rgba(0, 0, 0, 0.45);
+        }
+    }
+    .post-content {
+        display: flex;
+        flex-direction: row;
+        .article-userInfo {
+            width: 20vw;
+            border-right: 1px solid #fff;
+        }
+        .article-detail {
+            flex: 1;
+            padding: 20px;
+            font-size: 17px;
+            font-weight: 800;
+            color: black;
+            font-family: "Microsoft YaHei", "SimSun", "STHeiti";
+        }
+    }
+}

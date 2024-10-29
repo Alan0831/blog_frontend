@@ -1,0 +1,22 @@
+.my_notice {
+    .comment_outer {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        width: 100%;
+        cursor: pointer;
+        .comment_middle {
+            display: flex;
+            flex-direction: row;
+            .comment_content {
+                margin-left: 10px;
+            }
+        }
+        .comment_noread {
+            color: red;
+        }
+        .comment_hadnoread {
+            color: green;
+        }
+    }
+}
