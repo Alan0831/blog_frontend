@@ -40,6 +40,8 @@ function MdEditor(props) {
   useEffect(() => {
     setContent(props.articleInfo.content);
     setTitle(props.articleInfo.title);
+    console.log(props.articleInfo.tagList)
+    setSelectedTags(JSON.parse(props.articleInfo.tagList || '[]'));
   }, [props.articleInfo]);
 
   // 文章内容改变
@@ -60,6 +62,10 @@ function MdEditor(props) {
       message.warning('请输入标题！');
       return;
     }
+    if (selectedTags.length === 0) {
+      message.warning('请选择文章标签！');
+      return;
+    }
     if (!content) {
       message.warning('你的内容捏？');
       return;
@@ -73,6 +79,7 @@ function MdEditor(props) {
       content,
       authorId,
       articleId: props.articleInfo.id,
+      tagList: selectedTags,
     };
     const res = await request('/editArticle', { data: obj });
     if (res.status == 200) {

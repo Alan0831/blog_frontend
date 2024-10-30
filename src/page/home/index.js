@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { List, Space, message, Input } from 'antd';
+import { List, message, Input, Pagination, Spin } from 'antd';
 import ArticleCard from '../../components/ArticleCard'
 import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
@@ -11,10 +11,11 @@ const { Search } = Input;
 const socket = new WebSocket('ws://127.0.0.1:9998');
 
 export default function Home() {
-    const [change, setChange] = useState(false);
     const [listData, setData] = useState([]);
+    const [loading, setLoading] = useState(false);
     const [recommendArticleListData, setRecommendArticleList] = useState([]);
     const [pageNum, setPageNum] = useState(1);
+    const [total, setTotal] = useState(0);
     const [keyword, setKeyword] = useState('');
     const userInfo = useSelector(state => state.user);
     const bus = useBus();
@@ -33,6 +34,7 @@ export default function Home() {
         };
         // 接收到消息的回调
         socket.onmessage = (res) => {
+            console.log(res);
             bus.emit('getNotice', JSON.parse(res.data));
         }
         // 连接发生错误的回调
@@ -48,13 +50,18 @@ export default function Home() {
     //  获取文章列表
     const getArticleList = async (pageNum = 1, pageSize = 10, keyword = '') => {
         let obj = {pageNum, pageSize, keyword};
+        setLoading(true);
         try {
             const res = await request('/getArticleList', { data: obj });
             console.log(res?.data.rows);
             if (res?.data.rows) {
                 setData([...res?.data.rows]);
+                setTotal(res?.data.count);
+                setPageNum(res?.data.pageNum);
+                setLoading(false);
             }
         } catch (err) {
+            setLoading(false);
             console.error(err);
         }
     }
@@ -72,40 +79,50 @@ export default function Home() {
         }
     }
 
+    //  翻页
+    const changePage = (page) => {
+        getArticleList(page, 10, keyword);
+    }
+
     const handlePressEnter = () => {
         getArticleList(1, 10, keyword);
     }
 
     return (
-        <div className='home_content'>
-            <div className='home_under_content'>
-                <div className='home_left_content'>
-                    <Recommend articleList={recommendArticleListData}></Recommend>
-                </div>
-                <div className='home_right_content'>
-                    <div className='home_search'>
-                        <Search
-                            placeholder="请输入文章标题"
-                            enterButton
-                            onChange={(e) => setKeyword(e.target.value)}
-                            value={keyword}
-                            onPressEnter={handlePressEnter}
-                            onSearch={handlePressEnter}
-                            style={{ width: '50%' }} 
-                        />
+        <Spin tip='加载中,请稍后...' spinning={loading}>
+            <div className='home_content'>
+                <div className='home_under_content'>
+                    <div className='home_left_content'>
+                        <Recommend articleList={recommendArticleListData}></Recommend>
                     </div>
-                    <div className='home_list'>
-                        <List
-                            dataSource={listData}
-                            renderItem={item => (
-                                <List.Item>
-                                    <ArticleCard articleInfo={item}></ArticleCard>
-                                </List.Item>
-                            )}
-                        />
+                    <div className='home_right_content'>
+                        <div className='home_search'>
+                            <Search
+                                placeholder="请输入文章标题"
+                                enterButton
+                                onChange={(e) => setKeyword(e.target.value)}
+                                value={keyword}
+                                onPressEnter={handlePressEnter}
+                                onSearch={handlePressEnter}
+                                style={{ width: '50%' }} 
+                            />
+                        </div>
+                        <div className='home_list'>
+                            <List
+                                dataSource={listData}
+                                renderItem={item => (
+                                    <List.Item>
+                                        <ArticleCard articleInfo={item}></ArticleCard>
+                                    </List.Item>
+                                )}
+                            />
+                        </div>
+                        <div className='home_pagination'>
+                            <Pagination current={pageNum} total={total} onChange={changePage} pageSize={10} />
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </Spin>
     )
 }

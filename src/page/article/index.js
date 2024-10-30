@@ -74,6 +74,10 @@ function Article() {
 
     // 收藏
     const addCollection = async () => {
+        if (userInfo.userId == -1) {
+            message.info('请先登录');
+            return;
+        }
         try {
             let data = {
                 collectionArticleId: parseInt(id),
