@@ -75,7 +75,7 @@ function Article() {
     // 收藏
     const addCollection = async () => {
         if (userInfo.userId == -1) {
-            message.info('请先登录');
+            message.info('请先登录,然后可添加收藏');
             return;
         }
         try {

@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';    // 路由插件
 import './App.css';
 import PublicComponent from './components/Public'
 import Header from './components/header';
+import React from 'react';
 function App() {
   return (
     <div className="App">
