@@ -3,8 +3,13 @@ import { Routes, Route } from 'react-router-dom';    // 路由插件
 import './App.css';
 import PublicComponent from './components/Public'
 import Header from './components/header';
-import React from 'react';
+import { useEffect } from 'react';
+import { setCursor } from './utils/curlyCursor'
 function App() {
+  useEffect(() => {
+    setCursor();
+  },[])
+
   return (
     <div className="App">
       <Header />
@@ -16,6 +21,7 @@ function App() {
         }
       </Routes>
       <PublicComponent />
+      <canvas></canvas>
     </div>
   );
 }

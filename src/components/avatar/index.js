@@ -29,8 +29,8 @@ AppAvatar.propTypes = {
     popoverVisible: PropTypes.bool
 }
 
-AppAvatar.defaultProps = {
-    popoverVisible: true
-}
+// AppAvatar.defaultProps = {
+//     popoverVisible: true
+// }
 
 export default AppAvatar

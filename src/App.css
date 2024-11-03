@@ -28,3 +28,16 @@
     transform: rotate(360deg);
   }
 }
+
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+body {
+  /* .header {
+    cursor: 'url(../public/cursor.png),auto';
+  } */
+  cursor: url('../public/favicon.ico'), auto;
+}

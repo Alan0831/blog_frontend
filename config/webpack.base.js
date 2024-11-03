@@ -1,6 +1,8 @@
 // config/webpack.base.js
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const WebpackBar = require('webpackbar'); 
+const { ProvidePlugin, DefinePlugin  } = require('webpack');
 
 module.exports = {
   entry: path.resolve(__dirname, '../src/index.js'),
@@ -12,6 +14,9 @@ module.exports = {
   },
   resolve: {
     extensions: ['.js', '.tsx', '.ts', '.json'],  // 解析模块时，可以省略的扩展名
+    alias: {
+      '@': path.resolve(__dirname, '../', 'src'),
+    },
   },
   module: {
     rules: [
@@ -50,6 +55,17 @@ module.exports = {
       // favicon: path.resolve(__dirname, '../', 'public/favicon.ico'), // 设置页面图标
       // filename: 'aaa.html', // 打包后的文件名, 默认index.html
     }),
+    new WebpackBar({
+      color: "#85d", // 默认green，进度条颜色支持HEX
+      basic: false, // 默认true，启用一个简单的日志报告器
+      profile: false, // 默认false，启用探查器。
+    }),
+    new ProvidePlugin({
+      React: path.resolve(__dirname, '../', 'node_modules/react/index.js'),
+    }),
+    new DefinePlugin({ 
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV) 
+    }),
   ],
   devServer: {
     open: true, // 自动打开浏览器
@@ -64,5 +80,8 @@ module.exports = {
       changeOrigin: true, // 是否跨域，虚拟的站点需要更管origin
       // 其他代理选项...
     }]
+  },
+  cache: {
+    type: 'filesystem', // 使用文件缓存
   },
 }
