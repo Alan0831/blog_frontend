@@ -1,6 +1,6 @@
 import React, { Component, useEffect, useState } from 'react';
 import ReactQuill from 'react-quill';
-import { Button, Input, message, Tag, Popover, Select } from 'antd'
+import { Button, Input, message, Tag, Popover, Select, Switch } from 'antd'
 import 'react-quill/dist/quill.snow.css';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -37,6 +37,8 @@ function MdEditor(props) {
   const [oldArticleClass, setOldArticleClass] = useState(-1); //  保存修改前的文章大类ID
   const [articleClassOptions, setArticleClassOptions] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [lock, setLock] = useState(false);
+  const [password, setPassword] = useState('');
   const userInfo = useSelector(state => state.user);
 
   // 如果是修改模式，则设置初始值
@@ -48,6 +50,7 @@ function MdEditor(props) {
       setOldArticleClass(props.articleInfo.articleclassId);
       console.log(props.articleInfo.articleclassId)
       setSelectedTags(JSON.parse(props.articleInfo.tagList || '[]'));
+      setLock(props.articleInfo.isLock === 2);
     }
     searchArticleClassName();
   }, [props.articleInfo]);
@@ -105,6 +108,8 @@ function MdEditor(props) {
       tagList: selectedTags,
       oldClassId: oldArticleClass || -1,
       classId: articleClass,
+      isLock: 1,
+      password: ''
     };
     const res = await request('/editArticle', { data: obj });
     if (res.status == 200) {
@@ -142,6 +147,8 @@ function MdEditor(props) {
       authorId,
       tagList: selectedTags,
       classId: articleClass,
+      isLock: lock ? 2 : 1,
+      password
     };
     const res = await request('/createArticle', { data: obj });
     if (res.status == 200) {
@@ -221,6 +228,11 @@ function MdEditor(props) {
       <div className='article_tags'>
         <span style={{fontSize: '14px', fontWeight: 'bold', marginTop: '5px'}}>文章归属：</span>
         <Select onChange={(value) => setArticleClass(value)} value={articleClass} style={{width: 150}} options={articleClassOptions} />
+      </div>
+      <div className='article_tags'>
+        <span style={{fontSize: '14px', fontWeight: 'bold', marginTop: '5px'}}>文章加锁：</span>
+        <Switch checkedChildren="开启" unCheckedChildren="关闭" checked={lock} onChange={(value) => setLock(value)} disabled={props.isEdit} />
+        <Input placeholder='输入文章密码' disabled={!lock || props.isEdit} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       <ReactQuill
         className='content_md'

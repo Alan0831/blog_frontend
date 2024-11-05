@@ -112,7 +112,7 @@ export default function Home() {
                                 dataSource={listData}
                                 renderItem={item => (
                                     <List.Item>
-                                        <ArticleCard articleInfo={item}></ArticleCard>
+                                        <ArticleCard articleInfo={item} userInfo={userInfo} ></ArticleCard>
                                     </List.Item>
                                 )}
                             />

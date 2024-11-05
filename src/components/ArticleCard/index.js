@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Divider, Tag } from 'antd';
+import { Card, Divider, Tag, Modal, Input, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
-import { EyeOutlined, TagOutlined, CommentOutlined, StarOutlined } from '@ant-design/icons';
-import { calcCommentsCount } from '../../utils'
+import { EyeOutlined, TagOutlined, CommentOutlined, StarOutlined, LockTwoTone } from '@ant-design/icons';
+import { calcCommentsCount } from '../../utils';
+import { request } from '../../utils/request';
 import './index.less'
 /**
  * 文章卡片
 */
 function ArticleCard(props) {
-  const { articleInfo } = props;
+  const { articleInfo, userInfo } = props;
   const [tagList, setTagList] = useState([]);
   const [content, setContent] = useState('');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
   useEffect(()=>{
@@ -27,12 +30,58 @@ function ArticleCard(props) {
     return text.replace(/<[^>]*>?/gm, '');
   }
 
+  // 跳转文章
+  const gotoArticle = () => {
+    if (articleInfo.isLock === 2 && articleInfo.userId !== userInfo.userId) {
+      setPassword('');
+      setModalOpen(true);
+    } else {
+      navigate(`/article/${articleInfo.id}`);
+    }
+  }
+
+  // 解锁文章
+  const unLockArticle = async () => {
+    if (!password) {
+      message.info('请输入文章密码');
+      return;
+    }
+    let obj = {
+      password,
+      articleId: articleInfo.id,
+    };
+    const res = await request('/validateArticleLock', { data: obj });
+    if (res.status == 200) {
+      message.success('解锁成功！');
+      navigate(`/article/${articleInfo.id}`);
+    } else {
+      message.error(res.errorMessage);
+      setModalOpen(false);
+    }
+  }
+
+  const closeModal = async () => {
+    await request('/validateArticleLock', { data: {} });
+    setModalOpen(false);
+  }
+
   return (
-    <Card style={{ margin: '16px auto' }} onClick={() => navigate(`/article/${articleInfo.id}`)}>
+    <Card style={{ margin: '16px auto' }} onClick={gotoArticle}>
       <div className='card-main'>
         <div className='card-title'>{articleInfo.title}</div>
         <Divider></Divider>
-        <div className='card-content'>{content}</div>
+        {
+          (articleInfo.isLock === 2 && articleInfo.userId !== userInfo.userId) ? (
+            <div className='card-content'>
+              <div className='mosaic-effect'>{content}</div>
+              <div className='card-lock'><LockTwoTone style={{ fontSize: '32px' }}/></div>
+            </div>
+          ) : (
+            <div className='card-content'>
+              {content}
+            </div>
+          )
+        }
         <Divider></Divider>
         <div className='card-footer'>
           <div className='viewCount'>
@@ -63,6 +112,17 @@ function ArticleCard(props) {
           </div>
         </div>
       </div>
+      <Modal
+        title="解锁文章"
+        open={modalOpen}
+        okText='确定'
+        cancelText='关闭'
+        closable={false}
+        onOk={unLockArticle}
+        onCancel={closeModal}
+      >
+        <Input placeholder='请输入密码' value={password} onChange={(e) => setPassword(e.target.value)} />
+      </Modal>
     </Card>
   )
 }
