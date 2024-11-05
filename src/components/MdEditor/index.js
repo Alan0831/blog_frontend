@@ -1,6 +1,6 @@
 import React, { Component, useEffect, useState } from 'react';
 import ReactQuill from 'react-quill';
-import { Button, Input, message, Tag, Popover } from 'antd'
+import { Button, Input, message, Tag, Popover, Select } from 'antd'
 import 'react-quill/dist/quill.snow.css';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
@@ -33,16 +33,39 @@ function MdEditor(props) {
   const navigate = useNavigate();
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('');
+  const [articleClass, setArticleClass] = useState('');
+  const [oldArticleClass, setOldArticleClass] = useState(-1); //  保存修改前的文章大类ID
+  const [articleClassOptions, setArticleClassOptions] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
   const userInfo = useSelector(state => state.user);
 
   // 如果是修改模式，则设置初始值
   useEffect(() => {
-    setContent(props.articleInfo.content);
-    setTitle(props.articleInfo.title);
-    console.log(props.articleInfo.tagList)
-    setSelectedTags(JSON.parse(props.articleInfo.tagList || '[]'));
+    if (props.isEdit) {
+      setContent(props.articleInfo.content);
+      setTitle(props.articleInfo.title);
+      setArticleClass(props.articleInfo.articleclassId);
+      setOldArticleClass(props.articleInfo.articleclassId);
+      console.log(props.articleInfo.articleclassId)
+      setSelectedTags(JSON.parse(props.articleInfo.tagList || '[]'));
+    }
+    searchArticleClassName();
   }, [props.articleInfo]);
+
+  //  查询文章大类
+  const searchArticleClassName = async () => {
+    let res = await request('/searchArticleClassName', {data: {userId: userInfo.userId}});
+    if(res.status === 200) {
+        let options = [];
+        res.data.rows.map((item) => {
+            options.push({value: item.id, label: item.className});
+        });
+        setArticleClassOptions(options);
+        console.log(options)
+    } else {
+        message.error(res.errorMessage);
+    }
+}
 
   // 文章内容改变
   const handleChange = (content) => {
@@ -80,6 +103,8 @@ function MdEditor(props) {
       authorId,
       articleId: props.articleInfo.id,
       tagList: selectedTags,
+      oldClassId: oldArticleClass || -1,
+      classId: articleClass,
     };
     const res = await request('/editArticle', { data: obj });
     if (res.status == 200) {
@@ -116,6 +141,7 @@ function MdEditor(props) {
       content,
       authorId,
       tagList: selectedTags,
+      classId: articleClass,
     };
     const res = await request('/createArticle', { data: obj });
     if (res.status == 200) {
@@ -191,6 +217,10 @@ function MdEditor(props) {
             </span>
           </Tag>
         </Popover>
+      </div>
+      <div className='article_tags'>
+        <span style={{fontSize: '14px', fontWeight: 'bold', marginTop: '5px'}}>文章归属：</span>
+        <Select onChange={(value) => setArticleClass(value)} value={articleClass} style={{width: 150}} options={articleClassOptions} />
       </div>
       <ReactQuill
         className='content_md'

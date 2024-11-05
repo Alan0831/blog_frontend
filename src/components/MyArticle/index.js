@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Table, Space, message, Popconfirm } from 'antd'
+import { Table, Space, message, Popconfirm, Input, Form, Button, Select } from 'antd'
 import { request } from '../../utils/request';
 import { useNavigate } from 'react-router-dom';
 import { calcCommentsCount } from '../../utils'
@@ -10,9 +10,14 @@ import './index.less'
 function MyArticle(props) {
     const [userId, setUserId] = useState(props.userInfo.userId);
     const [dataList, setData] = useState([]);
+    const [articleClassName, setArticleClassName] = useState('');
+    const [articleClassOptions, setArticleClassOptions] = useState([]);
     const navigate = useNavigate();
+    const [form] = Form.useForm();
+
     useEffect(() => {
         getMyArticleList();
+        searchArticleClassName();
     }, [props.userInfo.userId])
 
     const getMyArticleList = async () => {
@@ -31,6 +36,57 @@ function MyArticle(props) {
             getMyArticleList();
         } else {
             message.error(res.errorMessage);
+        }
+    }
+
+    //  查询文章大类
+    const searchArticleClassName = async () => {
+        let res = await request('/searchArticleClassName', {data: {userId}});
+        if(res.status === 200) {
+            let options = [];
+            res.data.rows.map((item) => {
+                options.push({value: item.id, label: item.className});
+            });
+            setArticleClassOptions(options);
+        } else {
+            message.error(res.errorMessage);
+        }
+    }
+
+    //  提交文章大类名称
+    const submitArticleClassName = async () => {
+        console.log(articleClassName);
+        let res = await request('/createArticleClassName', {data: {userId, className: articleClassName}});
+        if(res.status === 200) {
+            message.success('创建文章大类成功！');
+            searchArticleClassName();
+            setArticleClassName('');
+        } else {
+            message.error(res.errorMessage);
+        }
+    }
+
+    //  修改文章所属类
+    const handleChange= async (value, record) => {
+        console.log(value)
+        console.log(record)
+        //  如果原classId与现classId不同，则为修改
+        if (record.articleclassId && record.articleclassId !== value) {
+            let res = await request('/setArticleClass', {data: {userId, articleId: record.id, oldClassId: record.articleclassId, classId: value}});
+            if(res.status === 200) {
+                message.success('设置文章大类成功！');
+                getMyArticleList();
+            } else {
+                message.error(res.errorMessage);
+            }
+        } else {
+            let res = await request('/setArticleClass', {data: {userId, oldClassId: -1, articleId: record.id, classId: value}});
+            if(res.status === 200) {
+                message.success('设置文章大类成功！');
+                getMyArticleList();
+            } else {
+                message.error(res.errorMessage);
+            }
         }
     }
 
@@ -60,6 +116,15 @@ function MyArticle(props) {
             align: 'center',
             render: (text) => (
                 <span>{calcCommentsCount(text)}</span>
+            ),
+        },
+        {
+            title: '所属大类',
+            dataIndex: 'articleclassId',
+            key: 'articleclassId',
+            align: 'center',
+            render: (text, record) => (
+                <Select onChange={(value) => handleChange(value, record)} style={{width: 120}} defaultValue={text} options={articleClassOptions} />
             ),
         },
         {
@@ -93,6 +158,19 @@ function MyArticle(props) {
 
     return (
         <div className='help-article'>
+            <div className='setArticleProps'>
+                <Form
+                    layout='inline'
+                    form={form}
+                >
+                    <Form.Item label="创建文章大类">
+                        <Input value={articleClassName} onChange={(e) => setArticleClassName(e.target.value)} placeholder="文章大类名称" />
+                    </Form.Item>
+                    <Form.Item>
+                        <Button type="primary" onClick={submitArticleClassName}>确认</Button>
+                    </Form.Item>
+                </Form>
+            </div>
             <Table
                 columns={columns}
                 dataSource={dataList}

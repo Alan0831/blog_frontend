@@ -74,6 +74,7 @@ module.exports = {
     static: {
       directory: path.join(__dirname, "../public"), //托管静态资源public文件夹
     },
+    historyApiFallback: true,
     proxy: [{
       context: ['/commit/api'],
       target: 'http://127.0.0.1:3001',
