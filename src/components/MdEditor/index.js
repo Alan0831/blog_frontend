@@ -1,4 +1,4 @@
-import React, { Component, useEffect, useState } from 'react';
+import React, { Component, useEffect, useState, useRef } from 'react';
 import ReactQuill from 'react-quill';
 import { Button, Input, message, Tag, Popover, Select, Switch } from 'antd'
 import 'react-quill/dist/quill.snow.css';
@@ -39,6 +39,10 @@ function MdEditor(props) {
   const [selectedTags, setSelectedTags] = useState([]);
   const [lock, setLock] = useState(false);
   const [password, setPassword] = useState('');
+  const [inputVisible, setInputVisible] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+
+  const inputRef = useRef(null);
   const userInfo = useSelector(state => state.user);
 
   // 如果是修改模式，则设置初始值
@@ -54,6 +58,12 @@ function MdEditor(props) {
     }
     searchArticleClassName();
   }, [props.articleInfo]);
+
+  useEffect(() => {
+    if (inputVisible) {
+      inputRef.current?.focus();
+    }
+  }, [inputVisible])
 
   //  查询文章大类
   const searchArticleClassName = async () => {
@@ -107,10 +117,8 @@ function MdEditor(props) {
       articleId: props.articleInfo.id,
       tagList: selectedTags,
       oldClassId: oldArticleClass || -1,
-      classId: articleClass,
-      isLock: 1,
-      password: ''
     };
+    if (articleClass) obj.classId = articleClass;
     const res = await request('/editArticle', { data: obj });
     if (res.status == 200) {
       message.success('修改成功！');
@@ -146,10 +154,10 @@ function MdEditor(props) {
       content,
       authorId,
       tagList: selectedTags,
-      classId: articleClass,
       isLock: lock ? 2 : 1,
       password
     };
+    if (articleClass) obj.classId = articleClass;
     const res = await request('/createArticle', { data: obj });
     if (res.status == 200) {
       message.success('发布成功！');
@@ -198,6 +206,20 @@ function MdEditor(props) {
     setSelectedTags(nextSelectedTags);
   }
 
+  const handleInputChange = (e) => {
+    setInputValue(e.target.value);
+  };
+  const handleInputConfirm = () => {
+    if (inputValue && selectedTags.indexOf(inputValue) === -1) {
+      setSelectedTags([...selectedTags, inputValue]);
+    }
+    setInputVisible(false);
+    setInputValue('');
+  };
+  const showInput = () => {
+    setInputVisible(true);
+  };
+
   return (
     <div className='article_md'>
       <Input
@@ -224,6 +246,25 @@ function MdEditor(props) {
             </span>
           </Tag>
         </Popover>
+        <div>
+          {inputVisible && (
+            <Input
+              ref={inputRef}
+              type="text"
+              size="small"
+              className="tag-input"
+              value={inputValue}
+              onChange={handleInputChange}
+              onBlur={handleInputConfirm}
+              onPressEnter={handleInputConfirm}
+            />
+          )}
+          {!inputVisible && (
+            <Tag className="site-tag-plus" onClick={showInput}>
+              自定义标签
+            </Tag>
+          )}
+        </div>
       </div>
       <div className='article_tags'>
         <span style={{fontSize: '14px', fontWeight: 'bold', marginTop: '5px'}}>文章归属：</span>
