@@ -1,4 +1,4 @@
-import React, { Component, useEffect, useState, useRef } from 'react';
+import React, { Component, useEffect, useMemo, useState, useRef } from 'react';
 import ReactQuill from 'react-quill';
 import { Button, Input, message, Tag, Popover, Select, Switch } from 'antd'
 import 'react-quill/dist/quill.snow.css';
@@ -6,21 +6,10 @@ import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { request } from '../../utils/request';
 import { PlusOutlined } from '@ant-design/icons';
+import axios from 'axios';
 import './index.less'
 const { CheckableTag } = Tag;
 
-const toolbar = [
-  ["bold", "italic", "underline", "strike"],       // 加粗 斜体 下划线 删除线
-  ["blockquote", "code-block"],                    // 引用  代码块
-  [{ list: "ordered" }, { list: "bullet" }],       // 有序、无序列表
-  [{ indent: "-1" }, { indent: "+1" }],            // 缩进
-  [{ size: ["small", false, "large", "huge"] }],   // 字体大小
-  [{ header: [1, 2, 3, 4, 5, 6, false] }],         // 标题
-  [{ color: [] }, { background: [] }],             // 字体颜色、字体背景颜色
-  [{ align: [] }],                                 // 对齐方式
-  ["clean"],                                       // 清除文本格式
-  // ["link", "image", "video"]                       // 链接、图片、视频
-]
 const defaultTagsList = [
   {tagName: 'JavaScript', id: 1, key: '1'}, {tagName: 'Java', id: 2, key: '2'}, {tagName: 'php', id: 3, key: '3'}, {tagName: 'Python', id: 4, key: '4'}, {tagName: 'c语言', id: 5, key: '5'},
   {tagName: 'c++', id: 6, key: '6'}, {tagName: 'c#', id: 7, key: '7'}, {tagName: 'css', id: 8, key: '8'}, {tagName: 'node.js', id: 9, key: '9'}, {tagName: 'go', id: 10, key: '10'},
@@ -43,7 +32,45 @@ function MdEditor(props) {
   const [inputValue, setInputValue] = useState('');
 
   const inputRef = useRef(null);
+  const quillEdit = useRef();
   const userInfo = useSelector(state => state.user);
+
+  const options = useMemo(() => ({
+    toolbar: {
+      container: [
+        ["bold", "italic", "underline", "strike"],       // 加粗 斜体 下划线 删除线
+        ["blockquote", "code-block"],                    // 引用  代码块
+        [{ list: "ordered" }, { list: "bullet" }],       // 有序、无序列表
+        [{ indent: "-1" }, { indent: "+1" }],            // 缩进
+        [{ size: ["small", false, "large", "huge"] }],   // 字体大小
+        [{ header: [1, 2, 3, 4, 5, 6, false] }],         // 标题
+        [{ color: [] }, { background: [] }],             // 字体颜色、字体背景颜色
+        [{ align: [] }],                                 // 对齐方式
+        ["clean"],                                       // 清除文本格式
+        ["link", "image"]                       // 链接、图片、视频
+      ],
+      // handlers: {
+      //   image: handleImageUpload,
+      // }
+    },
+}))
+  // const toolbar = {
+  //   container: [
+  //     ["bold", "italic", "underline", "strike"],       // 加粗 斜体 下划线 删除线
+  //     ["blockquote", "code-block"],                    // 引用  代码块
+  //     [{ list: "ordered" }, { list: "bullet" }],       // 有序、无序列表
+  //     [{ indent: "-1" }, { indent: "+1" }],            // 缩进
+  //     [{ size: ["small", false, "large", "huge"] }],   // 字体大小
+  //     [{ header: [1, 2, 3, 4, 5, 6, false] }],         // 标题
+  //     [{ color: [] }, { background: [] }],             // 字体颜色、字体背景颜色
+  //     [{ align: [] }],                                 // 对齐方式
+  //     ["clean"],                                       // 清除文本格式
+  //     ["link", "image"]                       // 链接、图片、视频
+  //   ],
+  //   // handlers: {
+  //   //   image: handleImageUpload,
+  //   // }
+  // }
 
   // 如果是修改模式，则设置初始值
   useEffect(() => {
@@ -148,7 +175,7 @@ function MdEditor(props) {
       message.warning('请先登陆！');
       return;
     }
-    console.log(selectedTags);
+    console.log(content);
     let obj = {
       title,
       content,
@@ -206,6 +233,7 @@ function MdEditor(props) {
     setSelectedTags(nextSelectedTags);
   }
 
+  // 处理自定义标签
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
   };
@@ -219,6 +247,42 @@ function MdEditor(props) {
   const showInput = () => {
     setInputVisible(true);
   };
+
+  // 处理图片上传的函数
+  const handleImageUpload = () => {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/*');
+    input.click();
+    input.onchange = async () => {
+      const file = input.files[0];
+      const formData = new FormData();
+      console.log(file);
+      formData.append('file', file);
+      axios.post('/commit/api/uploadImage', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      .then(res => {
+        let url = res?.data?.data.url;
+        let quill = quillEdit?.current?.getEditor(); //获取到编辑器本身
+        const cursorPosition = quill.getSelection(true).index; //获取当前光标位置
+        quill.insertEmbed(cursorPosition, 'image', url); //插入图片
+        quill.setSelection(cursorPosition + 1); //光标位置加1
+      })
+      .catch(error => {
+        console.error(error);
+      });
+    };
+  }
+
+  const setQuillEdit = (r) => {
+    quillEdit.current = r;
+    if (r) {
+        r.getEditor().getModule('toolbar').handlers.image = handleImageUpload;
+    }
+  }
 
   return (
     <div className='article_md'>
@@ -276,11 +340,12 @@ function MdEditor(props) {
         <Input placeholder='输入文章密码' disabled={!lock || props.isEdit} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       <ReactQuill
-        className='content_md'
+        ref={o => setQuillEdit(o)}
+        className='content_md ql-editor'
         theme="snow"
         value={content}
         onChange={handleChange}
-        modules={{toolbar}}
+        modules={options}
         placeholder="请输入内容"
       />
       <div className='content_btn'>

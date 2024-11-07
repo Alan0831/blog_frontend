@@ -1,7 +1,11 @@
 import * as TYPES from '../types'
 import { request } from '../../utils/request';
+import * as PSW from '../../utils/password';
 
 export const login = params => {
+  if (params.password !== undefined) {
+    params.password = PSW.default.encrypt(params.password)
+  }
   return dispatch =>
     request('/doLogin', { data: params }).then(res => {
       dispatch({
