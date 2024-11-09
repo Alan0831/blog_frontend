@@ -21,7 +21,7 @@ function Recommend(props) {
     }, [props.articleList])
 
     const gotoArticle = (item) => {
-        if (item.isLock === 2 && item.userId !== userInfo.userId) {
+        if (item.visibleType === 2 && item.userId !== userInfo.userId) {
             setPassword('');
             setCurrentArticleId(item.id);
             setModalOpen(true);

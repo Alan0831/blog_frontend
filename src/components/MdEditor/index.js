@@ -18,6 +18,12 @@ const defaultTagsList = [
   {tagName: 'es6', id: 21, key: '21'}, {tagName: 'antd', id: 22, key: '22'}, {tagName: 'elementui', id: 23, key: '23'}, {tagName: 'layui', id: 24, key: '24'}, {tagName: 'angular', id: 25, key: '25'}, {tagName: 'koa', id: 26, key: '26'},
 ]
 
+const visibleTypeList = [
+  {value: 1, label: '全体用户可见'},
+  {value: 2, label: '文章加锁'},
+  {value: 3, label: '仅自己可见'},
+]
+
 function MdEditor(props) {
   const navigate = useNavigate();
   const [content, setContent] = useState('');
@@ -26,7 +32,7 @@ function MdEditor(props) {
   const [oldArticleClass, setOldArticleClass] = useState(-1); //  保存修改前的文章大类ID
   const [articleClassOptions, setArticleClassOptions] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
-  const [lock, setLock] = useState(false);
+  const [visibleType, setVisibleType] = useState(1);
   const [password, setPassword] = useState('');
   const [inputVisible, setInputVisible] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -54,23 +60,6 @@ function MdEditor(props) {
       // }
     },
 }))
-  // const toolbar = {
-  //   container: [
-  //     ["bold", "italic", "underline", "strike"],       // 加粗 斜体 下划线 删除线
-  //     ["blockquote", "code-block"],                    // 引用  代码块
-  //     [{ list: "ordered" }, { list: "bullet" }],       // 有序、无序列表
-  //     [{ indent: "-1" }, { indent: "+1" }],            // 缩进
-  //     [{ size: ["small", false, "large", "huge"] }],   // 字体大小
-  //     [{ header: [1, 2, 3, 4, 5, 6, false] }],         // 标题
-  //     [{ color: [] }, { background: [] }],             // 字体颜色、字体背景颜色
-  //     [{ align: [] }],                                 // 对齐方式
-  //     ["clean"],                                       // 清除文本格式
-  //     ["link", "image"]                       // 链接、图片、视频
-  //   ],
-  //   // handlers: {
-  //   //   image: handleImageUpload,
-  //   // }
-  // }
 
   // 如果是修改模式，则设置初始值
   useEffect(() => {
@@ -81,7 +70,7 @@ function MdEditor(props) {
       setOldArticleClass(props.articleInfo.articleclassId);
       console.log(props.articleInfo.articleclassId)
       setSelectedTags(JSON.parse(props.articleInfo.tagList || '[]'));
-      setLock(props.articleInfo.isLock === 2);
+      setVisibleType(props.articleInfo.visibleType);
     }
     searchArticleClassName();
   }, [props.articleInfo]);
@@ -144,6 +133,8 @@ function MdEditor(props) {
       articleId: props.articleInfo.id,
       tagList: selectedTags,
       oldClassId: oldArticleClass || -1,
+      visibleType,
+      password,
     };
     if (articleClass) obj.classId = articleClass;
     const res = await request('/editArticle', { data: obj });
@@ -181,7 +172,7 @@ function MdEditor(props) {
       content,
       authorId,
       tagList: selectedTags,
-      isLock: lock ? 2 : 1,
+      visibleType,
       password
     };
     if (articleClass) obj.classId = articleClass;
@@ -248,7 +239,7 @@ function MdEditor(props) {
     setInputVisible(true);
   };
 
-  // 处理图片上传的函数
+  // 处理图片上传
   const handleImageUpload = () => {
     const input = document.createElement('input');
     input.setAttribute('type', 'file');
@@ -335,9 +326,10 @@ function MdEditor(props) {
         <Select onChange={(value) => setArticleClass(value)} value={articleClass} style={{width: 150}} options={articleClassOptions} />
       </div>
       <div className='article_tags'>
-        <span style={{fontSize: '14px', fontWeight: 'bold', marginTop: '5px'}}>文章加锁：</span>
-        <Switch checkedChildren="开启" unCheckedChildren="关闭" checked={lock} onChange={(value) => setLock(value)} disabled={props.isEdit} />
-        <Input placeholder='输入文章密码' disabled={!lock || props.isEdit} value={password} onChange={(e) => setPassword(e.target.value)} />
+        <span style={{fontSize: '14px', fontWeight: 'bold', marginTop: '5px'}}>文章可见：</span>
+        <Select onChange={(value) => setVisibleType(value)} value={visibleType} style={{width: 150}} options={visibleTypeList} />
+        {/* <Switch checkedChildren="开启" unCheckedChildren="关闭" checked={lock} onChange={(value) => setLock(value)} disabled={props.isEdit} /> */}
+        {visibleType === 2 ? (<Input placeholder='输入文章密码' value={password} onChange={(e) => setPassword(e.target.value)} />) : null}
       </div>
       <ReactQuill
         ref={o => setQuillEdit(o)}

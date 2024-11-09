@@ -4,7 +4,7 @@ import './index.less'
 // import { DISCUSS_AVATAR } from '@/config'
 import { request } from '../../utils/request';
 import { useSelector, useDispatch } from 'react-redux'
-import { GithubOutlined, DownOutlined } from '@ant-design/icons';
+import { QqOutlined, DownOutlined } from '@ant-design/icons';
 import { loginout } from '../../redux/user/actions'
 // methods
 import { calcCommentsCount } from '../../utils'
@@ -116,7 +116,7 @@ function Discuss(props) {
                     username ? (
                         <AppAvatar userInfo={userInfo} />
                     ) : (
-                        <GithubOutlined style={{ fontSize: 40, margin: '5px 5px 0 0' }} />
+                        <QqOutlined style={{ fontSize: 40, margin: '5px 5px 0 0' }} />
                     )
                 }
                 content={

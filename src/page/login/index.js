@@ -7,6 +7,7 @@ import { login } from '../../redux/user/actions'
 import { useDispatch } from 'react-redux';
 import useBus from '../../hooks/useBus';
 import './index.less'
+const backImg = require('../../assets/images/bilan.jpeg');
 const { TabPane } = Tabs;
 
 function Login() {
@@ -176,7 +177,7 @@ function Login() {
                 </div>
             </div>
             <div className='backpic'>
-                <img src='bilan.jpeg'></img>
+                <img src={backImg}></img>
             </div>
         </div>
     )

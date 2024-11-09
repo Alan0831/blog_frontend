@@ -34,7 +34,7 @@ function Article() {
 
     useEffect(() => {
         setLoading(true);
-        Promise.allSettled([getArticle(), getRecommendArticleList()]).then(() => setLoading(false)).catch((err) => {setLoading(false);console.error(err);});
+        Promise.allSettled([getArticle(), getRecommendArticleList(), getLikeArticleList()]).then(() => setLoading(false)).catch((err) => {setLoading(false);console.error(err);});
     },[id])
 
     //  获取今日推荐文章列表
@@ -45,6 +45,18 @@ function Article() {
             if (res?.data.rows) {
                 setRecommendArticleList(res?.data.rows);
             }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    //  获取猜你喜欢文章列表
+    const getLikeArticleList = async () => {
+        console.log(article);
+        let obj = {articleId: id};
+        try {
+            const res = await request('/searchLikeArticle', { data: obj });
+            console.log(res)
         } catch (err) {
             console.error(err);
         }
@@ -150,7 +162,7 @@ function Article() {
                         <Recommend articleList={recommendArticleListData}></Recommend>
                     </div>
                     <div className='article-detail'>
-                        <div dangerouslySetInnerHTML={{ __html: content }} />
+                        <div className='article_de2'><div dangerouslySetInnerHTML={{ __html: content }} /></div>
                         <Discuss articleId={id} commentList={comments} setCommentList={setCommentList} />
                     </div>
                 </div>

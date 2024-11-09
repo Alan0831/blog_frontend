@@ -4,6 +4,7 @@ import { request } from '../../utils/request';
 import { useNavigate } from 'react-router-dom';
 import { calcCommentsCount } from '../../utils'
 import './index.less'
+
 /**
  * 我的文章管理
 */
@@ -116,6 +117,15 @@ function MyArticle(props) {
             align: 'center',
             render: (text) => (
                 <span>{calcCommentsCount(text)}</span>
+            ),
+        },
+        {
+            title: '可见类型',
+            dataIndex: 'visibleType',
+            key: 'visibleType',
+            align: 'center',
+            render: (text, record) => (
+                text == 1 ? '全体用户可见' : text == 2 ? '文章加锁' : '仅自己可见'
             ),
         },
         {

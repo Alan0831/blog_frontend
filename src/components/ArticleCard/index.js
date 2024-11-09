@@ -32,7 +32,7 @@ function ArticleCard(props) {
 
   // 跳转文章
   const gotoArticle = () => {
-    if (articleInfo.isLock === 2 && articleInfo.userId !== userInfo.userId) {
+    if (articleInfo.visibleType === 2 && articleInfo.userId !== userInfo.userId) {
       setPassword('');
       setModalOpen(true);
     } else {
@@ -71,7 +71,7 @@ function ArticleCard(props) {
         <div className='card-title'>{articleInfo.title}</div>
         <Divider></Divider>
         {
-          (articleInfo.isLock === 2 && articleInfo.userId !== userInfo.userId) ? (
+          (articleInfo.visibleType === 2 && articleInfo.userId !== userInfo.userId) ? (
             <div className='card-content'>
               <div className='mosaic-effect'>{content}</div>
               <div className='card-lock'><LockTwoTone style={{ fontSize: '32px' }}/></div>
