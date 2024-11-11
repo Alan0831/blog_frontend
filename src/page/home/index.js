@@ -93,7 +93,7 @@ export default function Home() {
             <div className='home_content'>
                 <div className='home_under_content'>
                     <div className='home_left_content'>
-                        <Recommend articleList={recommendArticleListData}></Recommend>
+                        <Recommend  type={1} articleList={recommendArticleListData}></Recommend>
                     </div>
                     <div className='home_right_content'>
                         <div className='home_search'>

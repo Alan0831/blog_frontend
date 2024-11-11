@@ -68,7 +68,6 @@ function Header() {
     ];
     useEffect(() => {
         const userInfo = get('userInfo');
-        console.log(userInfo)
         // 如果用户已登录，修改用户框
         if (userInfo) {
             setLoginStatus(true);

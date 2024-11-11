@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Modal, Input, message } from 'antd';
-import { FireTwoTone, EyeTwoTone } from '@ant-design/icons';
+import { FireTwoTone, EyeTwoTone, SmileTwoTone } from '@ant-design/icons';
 import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 
 import './index.less'
 /**
- * 推荐文章
+ * 推荐文章/猜你喜欢
 */
 function Recommend(props) {
+    const { type } = props;
     const [listData, setData] = useState([]);
     const [modalOpen, setModalOpen] = useState(false);
     const [password, setPassword] = useState('');
@@ -60,7 +61,7 @@ function Recommend(props) {
     return (
         <Card style={{ margin: '16px auto' }}>
             <div className='re-card'>
-                <div className='re-title'>热门文章<span style={{marginLeft: '7px'}}><FireTwoTone twoToneColor='#e0730d' /></span></div>
+                <div className='re-title'>{type === 1 ? '热门文章' : '猜你喜欢'}<span style={{marginLeft: '7px'}}>{type === 1 ? <FireTwoTone twoToneColor='#e0730d' /> : <SmileTwoTone twoToneColor='#e0730d' />}</span></div>
                 <div className='re-list'>
                     {
                         listData.length ? (

@@ -126,6 +126,10 @@ function MdEditor(props) {
       message.warning('请先登陆！');
       return;
     }
+    if (visibleType == 2 && !password) {
+      message.warning('请输入文章密码！');
+      return;
+    }
     let obj = {
       title,
       content,
@@ -164,6 +168,10 @@ function MdEditor(props) {
     }
     if (!authorId) {
       message.warning('请先登陆！');
+      return;
+    }
+    if (visibleType == 2 && !password) {
+      message.warning('请输入文章密码！');
       return;
     }
     console.log(content);

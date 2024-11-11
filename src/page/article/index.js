@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom';
 import './index.less'
-import { Divider, Spin, message, Tag, BackTop } from 'antd'
+import { Divider, Spin, message, Tag, BackTop, Anchor } from 'antd'
 import Recommend from '../../components/Recommend'
 import AuthorInfo from '../../components/AuthorInfo'
 import Discuss from '../../components/Discuss';
@@ -9,7 +9,8 @@ import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 import { EditOutlined, EyeOutlined, CommentOutlined, TagOutlined, StarOutlined, StarTwoTone } from '@ant-design/icons';
 import { calcCommentsCount } from '../../utils';
-// const arrow = require('../../../public/bilan.jpeg');
+import 'react-quill/dist/quill.snow.css';
+import Director from '../../components/director';
 
 /**
  * 文章内容
@@ -19,7 +20,9 @@ function Article() {
     const [loading, setLoading] = useState(false);
     const [authorInfo, setAuthorInfo] = useState({});
     const [recommendArticleListData, setRecommendArticleList] = useState([]);
+    const [likeArticleListData, setLikeArticleListData] = useState([]);
     const [tagList, setTagList] = useState([]);
+    const [isHaveDirector, setIsHaveDirector] = useState(false);
     const [article, setArticle] = useState({
         title: '',
         content: '',
@@ -56,7 +59,9 @@ function Article() {
         let obj = {articleId: id};
         try {
             const res = await request('/searchLikeArticle', { data: obj });
-            console.log(res)
+            if (res?.data) {
+                setLikeArticleListData(res?.data);
+            }
         } catch (err) {
             console.error(err);
         }
@@ -68,8 +73,10 @@ function Article() {
         if (res.status == 200) {
             let data = res.data;
             data.content = data.content.replace(/(\n|\r|\r\n|↵)/g, '<br />');
+            let isHaveDirector = data.content.includes('<ol>');
+            setIsHaveDirector(isHaveDirector);
             setArticle(data);
-            setTagList(JSON.parse(data.tagList))
+            setTagList(JSON.parse(data.tagList));
             setAuthorInfo(data.user);
         } else {
             message.error(res.errorMessage);
@@ -158,13 +165,21 @@ function Article() {
                 </div>
                 <div className='post-content'>
                     <div className='article-userInfo'>
-                        <AuthorInfo authorInfo={authorInfo}></AuthorInfo>
-                        <Recommend articleList={recommendArticleListData}></Recommend>
+                        <Anchor offsetTop={40}>
+                            <AuthorInfo authorInfo={authorInfo}></AuthorInfo>
+                            <Recommend type={1} articleList={recommendArticleListData}></Recommend>
+                            { likeArticleListData.length > 0 ? <Recommend type={2} articleList={likeArticleListData}></Recommend> : null}
+                        </Anchor>
                     </div>
                     <div className='article-detail'>
                         <div className='article_de2'><div dangerouslySetInnerHTML={{ __html: content }} /></div>
                         <Discuss articleId={id} commentList={comments} setCommentList={setCommentList} />
                     </div>
+                    {isHaveDirector ? (
+                        <div className='article-director'>
+                            <Anchor offsetTop={40}><Director articleList={content}></Director></Anchor>
+                        </div>
+                    ) : null}
                 </div>
             </article>
             <BackTop />

@@ -51,7 +51,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: path.resolve(__dirname, '../', 'public/index.html'), // 指定template后div里的东西不会被删除
       inject: true, // 自动注入静态资源, 2可指定js插入位置，如body前
-      title: '天使二次元', // 设置页面title
+      title: '笔记一二三', // 设置页面title
       // favicon: path.resolve(__dirname, '../', 'public/favicon.ico'), // 设置页面图标
       // filename: 'aaa.html', // 打包后的文件名, 默认index.html
     }),
