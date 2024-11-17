@@ -9,10 +9,13 @@ import './index.less'
  * 我的文章管理
 */
 function MyArticle(props) {
-    const [userId, setUserId] = useState(props.userInfo.userId);
+    const { userId } = props.userInfo;
+    // const [userId, setUserId] = useState(props.userInfo.userId);
     const [dataList, setData] = useState([]);
     const [articleClassName, setArticleClassName] = useState('');
     const [articleClassOptions, setArticleClassOptions] = useState([]);
+    const [pageNum, setPageNum] = useState(1);
+    const [total, setTotal] = useState(0);
     const navigate = useNavigate();
     const [form] = Form.useForm();
 
@@ -21,10 +24,12 @@ function MyArticle(props) {
         searchArticleClassName();
     }, [props.userInfo.userId])
 
-    const getMyArticleList = async () => {
-        let res = await request('/getArticleList', {data: {userId}});
+    const getMyArticleList = async (pageNum = 1, pageSize = 10) => {
+        let res = await request('/getArticleList', {data: {userId, pageNum, pageSize}});
         if(res.status === 200) {
             setData(res.data.rows);
+            setTotal(res?.data.count);
+            setPageNum(res?.data.pageNum);
         } else {
             message.error(res.errorMessage);
         }
@@ -166,6 +171,19 @@ function MyArticle(props) {
         },
     ]
 
+    //  翻页
+    const changePage = (page) => {
+        getMyArticleList(page, 10);
+    }
+
+    const pagination = {
+        current: pageNum,
+        total: total,
+        onChange: changePage,
+        pageSize: 10,
+        showTotal: (total) => `共 ${total} 条`,
+    }
+
     return (
         <div className='help-article'>
             <div className='setArticleProps'>
@@ -185,6 +203,7 @@ function MyArticle(props) {
                 columns={columns}
                 dataSource={dataList}
                 rowKey={record => record.id}
+                pagination={pagination}
             />
         </div>
     )

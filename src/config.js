@@ -15,6 +15,7 @@ export const HEADER_BLOG_NAME = '309车管所' // header title 显示的名字
 // === sidebar
 export const SIDEBAR = {
   avatar: require('./assets/images/avatar.jpeg'), // 侧边栏头像
+  alanAvatar: require('./assets/images/alan.jpg'), // 侧边栏头像
   title: 'Alan', // 标题
   subTitle: '我家有好康的', // 子标题
   // 个人主页
@@ -32,7 +33,8 @@ export const SIDEBAR = {
 }
 
 // === discuss avatar
-export const DISCUSS_AVATAR = SIDEBAR.avatar // 评论框博主头像
+export const DISCUSS_AVATAR = SIDEBAR.avatar // 评论框默认头像
+export const ALAN_AVATAR = SIDEBAR.alanAvatar // 作者头像
 
 /**
  * github config

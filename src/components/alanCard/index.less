@@ -1,0 +1,96 @@
+.alan-card {
+    display: flex;
+    flex-direction: column;
+    .alan-title {
+        display: flex;
+        justify-content: center;
+    }
+    .alan-name {
+        margin-top: 7px;
+        font-size: 21px;
+        font-weight: bold;
+        text-align: center;
+    }
+    .alan-type {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-evenly;
+        .alan-navigate {
+            display: flex;
+            flex-direction: column;
+            text-align: center;
+            font-size: 17px;
+            font-weight: lighter;
+            position: relative;
+        }
+        .alan-navigate::before, .alan-navigate::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: #fc2f70;
+            transform: scaleX(0);
+            transition: transform 0.5s ease;
+        }
+        .alan-navigate::before {
+            top: 0;
+            transform-origin: center right;
+        }
+        .alan-navigate:hover::before {
+            transform-origin: center left;
+            transform: scaleX(1);
+        }
+
+        .alan-navigate::after {
+            bottom: 0;
+            transform-origin: center left;
+        }
+
+        .alan-navigate:hover::after {
+            transform-origin: center right;
+            transform: scaleX(1);
+        }
+    }
+    .alan-button {
+        text-align: center;
+        button {
+            z-index: 1;
+            position: relative;
+            font-size: inherit;
+            font-family: inherit;
+            color: white;
+            padding: 0.5em 1em;
+            outline: none;
+            border: none;
+            width: 80%;
+            margin-top: 7px;
+            border-radius: 7px;
+            background-color: hsl(236, 32%, 26%);
+        }
+
+        button::before {
+            content: '';
+            z-index: -1;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: #fc2f70;
+            transform-origin: center left;
+            transform: scaleX(0);
+            border-radius: 7px;
+            transition: transform 0.25s ease-in-out;
+        }
+
+        button:hover {
+            cursor: pointer;
+        }
+
+        button:hover::before {
+            transform-origin: center right;
+            transform: scaleX(1);
+        }
+    }
+}

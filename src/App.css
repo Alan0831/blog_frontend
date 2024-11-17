@@ -35,9 +35,6 @@ canvas {
   left: 0;
   pointer-events: none;
 }
-body {
-  /* .header {
-    cursor: 'url(../public/cursor.png),auto';
-  } */
-  cursor: url('../public/favicon.ico'), auto;
-}
+/* body {
+  cursor: url('../public/pointer.ico'), auto;
+} */

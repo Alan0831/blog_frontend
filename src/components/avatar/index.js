@@ -7,21 +7,22 @@ import { DISCUSS_AVATAR } from '../../config'
 // components
 import { Avatar } from 'antd'
 
-function AvatarComponent({ username, role, image }) {
-    let avatarSrc = ''
+function AvatarComponent({ username, role, image, style }) {
+    let avatarSrc = '';
     if (image) {
         avatarSrc = image;
     } else {
         avatarSrc = DISCUSS_AVATAR;
     }
     // if (role === 1) 
-    return avatarSrc ? (<Avatar src={avatarSrc}>{username}</Avatar>) : (<Avatar>{username}</Avatar>)
+    return avatarSrc ? (<Avatar style={style} src={avatarSrc}>{username}</Avatar>) : (<Avatar style={style}>{username}</Avatar>)
 }
 //
 function AppAvatar(props) {
-    const { role, username } = props.userInfo
-    const image = props.image
-    return <AvatarComponent role={role} username={username} image={image} />
+    const { role = '2', username = '' } = props?.userInfo || {};
+    const image = props.image;
+    const style = props.style;
+    return <AvatarComponent style={style} role={role} username={username} image={image} />
 }
 
 AppAvatar.propTypes = {

@@ -17,7 +17,6 @@ function ArticleCard(props) {
   const navigate = useNavigate();
 
   useEffect(()=>{
-    console.log(props)
     // let { content } = props.articleInfo;
     let { content, tagList } = articleInfo;
     content = removeHTMLTags(content);
@@ -66,64 +65,67 @@ function ArticleCard(props) {
   }
 
   return (
-    <Card style={{ margin: '16px auto' }} onClick={gotoArticle}>
-      <div className='card-main'>
-        <div className='card-title'>{articleInfo.title}</div>
-        <Divider></Divider>
-        {
-          (articleInfo.visibleType === 2 && articleInfo.userId !== userInfo.userId) ? (
-            <div className='card-content'>
-              <div className='mosaic-effect'>{content}</div>
-              <div className='card-lock'><LockTwoTone style={{ fontSize: '32px' }}/></div>
+    <div className='card-outter'>
+      <Card style={{ margin: '16px 32px' }} onClick={gotoArticle}>
+        <div className='card-main'>
+          <div className='card-title'>{articleInfo.title}</div>
+          <Divider></Divider>
+          {
+            (articleInfo.visibleType === 2 && articleInfo.userId !== userInfo.userId) ? (
+              <div className='card-content'>
+                <div className='mosaic-effect'>{content}</div>
+                <div className='card-lock'><LockTwoTone style={{ fontSize: '32px' }}/></div>
+              </div>
+            ) : (
+              <div className='card-content'>
+                <div className='content-left'>{content}</div>
+                <div className='content-right'><img src={articleInfo.articleCover ? articleInfo.articleCover : 'http://commit-alan.oss-cn-beijing.aliyuncs.com/uploads/894982879e71cf98f9d008b99bc73089.webp'}></img></div>
+              </div>
+            )
+          }
+          <Divider></Divider>
+          <div className='card-footer'>
+            <div className='viewCount'>
+              <div>
+                <EyeOutlined style={{ margin: '0 7px 0 0' }}/>
+                {articleInfo.viewCount}
+              </div>
+              <div>
+                <CommentOutlined style={{ margin: '0 3px 0 7px' }} />
+                <span> {calcCommentsCount(articleInfo.comments)}</span>
+              </div>
+              <div>
+                <StarOutlined style={{ margin: '0 3px 0 7px' }} />
+                <span>{articleInfo.collectionCount}</span>
+              </div>
             </div>
-          ) : (
-            <div className='card-content'>
-              {content}
+            <Divider type='vertical' style={{ marginRight: 7 }} />
+            <div className='viewCount'>
+              <TagOutlined style={{ marginRight: 7 }}/>
+              {tagList.map((item) => {
+                return (<Tag color="#2db7f5" key={item}>{item}</Tag>)
+              })}
             </div>
-          )
-        }
-        <Divider></Divider>
-        <div className='card-footer'>
-          <div className='viewCount'>
-            <div>
-              <EyeOutlined style={{ margin: '0 7px 0 0' }}/>
-              {articleInfo.viewCount}
+            <Divider type='vertical' style={{ marginRight: 7 }} />
+            <div className='timeAndAuthor'>
+              <div className='createAt'>{'发布时间：' + articleInfo.createdAt}</div>    
+              <div>{'作者：' + articleInfo.author}</div>
             </div>
-            <div>
-              <CommentOutlined style={{ margin: '0 3px 0 7px' }} />
-              <span> {calcCommentsCount(articleInfo.comments)}</span>
-            </div>
-            <div>
-              <StarOutlined style={{ margin: '0 3px 0 7px' }} />
-              <span>{articleInfo.collectionCount}</span>
-            </div>
-          </div>
-          <Divider type='vertical' style={{ marginRight: 7 }} />
-          <div className='viewCount'>
-            <TagOutlined style={{ marginRight: 7 }}/>
-            {tagList.map((item) => {
-              return (<Tag color="#2db7f5" key={item}>{item}</Tag>)
-            })}
-          </div>
-          <Divider type='vertical' style={{ marginRight: 7 }} />
-          <div className='timeAndAuthor'>
-            <div className='createAt'>{'发布时间：' + articleInfo.createdAt}</div>    
-            <div>{'作者：' + articleInfo.author}</div>
           </div>
         </div>
-      </div>
+      </Card>
       <Modal
-        title="解锁文章"
-        open={modalOpen}
-        okText='确定'
-        cancelText='关闭'
-        closable={false}
-        onOk={unLockArticle}
-        onCancel={closeModal}
-      >
-        <Input placeholder='请输入密码' value={password} onChange={(e) => setPassword(e.target.value)} />
+          title="解锁文章"
+          open={modalOpen}
+          okText='确定'
+          cancelText='关闭'
+          closable={false}
+          onOk={unLockArticle}
+          onCancel={closeModal}
+        >
+          <Input placeholder='请输入密码' value={password} onChange={(e) => setPassword(e.target.value)} />
       </Modal>
-    </Card>
+    </div>  
   )
 }
 

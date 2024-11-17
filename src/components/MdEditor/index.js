@@ -1,11 +1,11 @@
 import React, { Component, useEffect, useMemo, useState, useRef } from 'react';
 import ReactQuill from 'react-quill';
-import { Button, Input, message, Tag, Popover, Select, Switch } from 'antd'
+import { Button, Input, message, Tag, Popover, Select, Upload } from 'antd'
 import 'react-quill/dist/quill.snow.css';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { request } from '../../utils/request';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import './index.less'
 const { CheckableTag } = Tag;
@@ -36,6 +36,8 @@ function MdEditor(props) {
   const [password, setPassword] = useState('');
   const [inputVisible, setInputVisible] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [imageUrl, setImageUrl] = useState();
+  const [loading, setLoading] = useState(false);
 
   const inputRef = useRef(null);
   const quillEdit = useRef();
@@ -139,6 +141,7 @@ function MdEditor(props) {
       oldClassId: oldArticleClass || -1,
       visibleType,
       password,
+      articleCover: imageUrl,
     };
     if (articleClass) obj.classId = articleClass;
     const res = await request('/editArticle', { data: obj });
@@ -181,7 +184,8 @@ function MdEditor(props) {
       authorId,
       tagList: selectedTags,
       visibleType,
-      password
+      password,
+      articleCover: imageUrl,
     };
     if (articleClass) obj.classId = articleClass;
     const res = await request('/createArticle', { data: obj });
@@ -283,6 +287,44 @@ function MdEditor(props) {
     }
   }
 
+  const beforeUpload = (file) => {
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png ' || file.type === 'image/webp';
+    if (!isJpgOrPng) {
+      message.error('仅支持jpeg、png、webp格式的图片哦!');
+    }
+    const isLt2M = file.size / 1024 / 1024 < 2;
+    if (!isLt2M) {
+      message.error('仅支持2M以下的图片哦!');
+    }
+    return isJpgOrPng && isLt2M;
+  };
+  const uploadImage = async (config) => {
+    // 通过FormData构造函数创建一个空对象
+    const formData = new FormData();
+    // 通过append方法来追加数据
+    formData.append('file', config.file);
+    axios.post('/commit/api/uploadImage', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    }).then(res => {
+      console.log(res?.data.data.url);
+      setImageUrl(res?.data.data.url);
+    }).catch(error => {
+      console.error(error);
+    })
+  }
+  const imagehandleChange = (info) => {
+    console.log(info)
+    if (info.file.status === 'uploading') {
+      setLoading(true);
+      return;
+    }
+    if (info.file.status === 'done') {
+      console.log(info)
+    }
+  };
+
   return (
     <div className='article_md'>
       <Input
@@ -293,6 +335,7 @@ function MdEditor(props) {
         onChange={handleTitleChange}
       />
       <div className='article_tags'>
+        <span className='article_allow'>*</span>
         <span style={{fontSize: '14px', fontWeight: 'bold', marginTop: '5px'}}>文章标签：</span>
         {
           selectedTags.map((item) => (
@@ -330,14 +373,37 @@ function MdEditor(props) {
         </div>
       </div>
       <div className='article_tags'>
-        <span style={{fontSize: '14px', fontWeight: 'bold', marginTop: '5px'}}>文章归属：</span>
+        <span className='article_tags_title'>文章归属：</span>
         <Select onChange={(value) => setArticleClass(value)} value={articleClass} style={{width: 150}} options={articleClassOptions} />
       </div>
       <div className='article_tags'>
-        <span style={{fontSize: '14px', fontWeight: 'bold', marginTop: '5px'}}>文章可见：</span>
+        <span className='article_tags_title'>文章可见：</span>
         <Select onChange={(value) => setVisibleType(value)} value={visibleType} style={{width: 150}} options={visibleTypeList} />
         {/* <Switch checkedChildren="开启" unCheckedChildren="关闭" checked={lock} onChange={(value) => setLock(value)} disabled={props.isEdit} /> */}
         {visibleType === 2 ? (<Input placeholder='输入文章密码' value={password} onChange={(e) => setPassword(e.target.value)} />) : null}
+      </div>
+      <div className='article_tags'>
+        <span className='article_tags_title'>文章封面：</span>
+        <Upload
+          name="avatar"
+          accept='multipart/form-data'
+          listType="picture-card"
+          className="avatar-uploader"
+          showUploadList={false}
+          fileList={[]}
+          customRequest={uploadImage}
+          beforeUpload={beforeUpload}
+          onChange={imagehandleChange}
+        >
+          {imageUrl ? (
+            <img src={imageUrl} alt="avatar" style={{ width: '100%', height: '100%' }} />
+          ) : (
+            <div>
+              {loading ? <LoadingOutlined /> : <PlusOutlined />}
+              <div style={{ marginTop: 8 }} >Upload</div>
+            </div>
+          )}
+        </Upload>
       </div>
       <ReactQuill
         ref={o => setQuillEdit(o)}
