@@ -1,23 +1,27 @@
 import React, { useEffect, useState } from 'react'
-import { message, Input, Pagination, Spin } from 'antd';
-import ArticleCard from '../../components/ArticleCard'
+import { message, Input, Pagination, Spin, Button } from 'antd';
+import ArticleCard from '../../components/ArticleCard';
+import VideoCard from '../../components/VideoCard';
 import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 import './index.less'
 import Recommend from '../../components/Recommend';
 import useBus from '../../hooks/useBus';
 import AlanCard from '../../components/alanCard';
+import MenuType from '../../components/menuType';
+import { InfoCircleOutlined } from '@ant-design/icons';
 
-const { Search } = Input;
 const socket = new WebSocket('ws://127.0.0.1:9998');
 
 export default function Home() {
     const [listData, setData] = useState([]);
+    const [videoListData, setVideoListData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [recommendArticleListData, setRecommendArticleList] = useState([]);
     const [pageNum, setPageNum] = useState(1);
     const [total, setTotal] = useState(0);
     const [keyword, setKeyword] = useState('');
+    const [menuType, setMenuType] = useState(1);
     const userInfo = useSelector(state => state.user);
     const bus = useBus();
 
@@ -67,6 +71,25 @@ export default function Home() {
         }
     }
 
+    // 获取视频列表
+    const getVideoList = async (pageNum = 1, pageSize = 10, keyword = '') => {
+        let obj = {pageNum, pageSize, keyword};
+        setLoading(true);
+        try {
+            const res = await request('/getVideoList', { data: obj });
+            console.log(res?.data.rows);
+            if (res?.data.rows) {
+                setVideoListData([...res?.data.rows]);
+                setTotal(res?.data.count);
+                setPageNum(res?.data.pageNum);
+                setLoading(false);
+            }
+        } catch (err) {
+            setLoading(false);
+            console.error(err);
+        }
+    }
+
     //  获取今日推荐文章列表
     const getRecommendArticleList = async (pageNum = 1, pageSize = 10, keyword = '') => {
         let obj = {pageNum, pageSize, keyword};
@@ -77,6 +100,15 @@ export default function Home() {
             }
         } catch (err) {
             console.error(err);
+        }
+    }
+
+    //  点击菜单列表类型
+    const clickMenu = (type) => {
+        console.log(type);
+        setMenuType(type);
+        if (type == 2 && videoListData.length == 0) {
+            getVideoList();
         }
     }
 
@@ -106,33 +138,33 @@ export default function Home() {
                     </div>
                     <div className='home_under_content'>
                         <div className='home_left_content'>
-                            <Recommend  type={1} articleList={recommendArticleListData}></Recommend>
-                        </div>
-                        <div className='home_middle_content'>
+                            <AlanCard></AlanCard>
                             <div className='home_search'>
-                                <Search
-                                    placeholder="请输入文章标题"
-                                    enterButton
+                                <Input
+                                    placeholder={menuType == 1 ? '搜索文章' : '搜索视频'}
                                     onChange={(e) => setKeyword(e.target.value)}
                                     value={keyword}
                                     onPressEnter={handlePressEnter}
-                                    onSearch={handlePressEnter}
-                                    style={{ width: '50%' }} 
+                                    style={{borderRadius: '7px', border: '2px solid hsl(236, 32%, 26%)'}}
+                                    // suffix={<InfoCircleOutlined style={{color: 'rgba(0,0,0,.45)'}}/>}
                                 />
                             </div>
+                            <MenuType clickMenu={clickMenu}></MenuType>
+                        </div>
+                        <div className='home_middle_content'>
                             <div className='home_list'>
-                                {listData.map((item) => {
-                                    return (
-                                        <ArticleCard articleInfo={item} userInfo={userInfo} key={item.id} />
-                                    )
-                                })}
+                                {
+                                    menuType == 1 ? 
+                                        <div>{listData.map((item) => <ArticleCard articleInfo={item} userInfo={userInfo} key={item.id} />)}</div> : 
+                                        <div>{videoListData.map((item) => <VideoCard videoInfo={item} userInfo={userInfo} key={item.id} />)}</div>
+                                }
                             </div>
                             <div className='home_pagination'>
                                 <Pagination current={pageNum} total={total} onChange={changePage} pageSize={10} />
                             </div>
                         </div>
                         <div className='home_right_content'>
-                            <AlanCard></AlanCard>
+                            <Recommend  type={1} articleList={recommendArticleListData}></Recommend>
                         </div>
                     </div>
                 </div>

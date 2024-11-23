@@ -288,7 +288,7 @@ function MdEditor(props) {
   }
 
   const beforeUpload = (file) => {
-    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png ' || file.type === 'image/webp';
+    const isJpgOrPng = file.type === 'image/jpeg' || file.type === 'image/png' || file.type === 'image/webp';
     if (!isJpgOrPng) {
       message.error('仅支持jpeg、png、webp格式的图片哦!');
     }

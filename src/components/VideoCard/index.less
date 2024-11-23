@@ -1,0 +1,89 @@
+.card-outter {
+    .card-main{
+        height: 300px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        .card-title{
+            height: 30px;
+            font-size: 25PX;
+            font-weight: 800;
+        }
+        .card-content{
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            max-height: 200px;
+            .content-left {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-line-clamp: 4;
+                -webkit-box-orient: vertical;
+                position: relative;
+                width: 70%;
+            }
+            .content-right {
+                width: 30%;
+                padding: 5px;
+                overflow: hidden;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                img {
+                    width: 210px;
+                    height: 100%;
+                    transition: transform 0.7s ease; /* 平滑的过渡效果 */
+                }
+                img:hover {
+                    transform: scale(1.1); /* 放大至原始大小的1.1倍 */
+                }
+            }
+            .mosaic-effect {
+                background-color: #f0f0f0;
+                margin: 20px;
+                filter: blur(5px); /* 模糊效果 */
+            }
+            .card-lock{
+                position: absolute;
+                left: 50%;
+                top: 50%;
+            }
+        }
+        .card-footer{
+            height: 20px;
+            font-size: 13px;
+            font-weight: 100;
+            display: flex;
+            flex-direction: row;
+            // justify-content: space-around;
+            .viewCount{
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+            }
+            .createAt{
+    
+            }
+            .timeAndAuthor{
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                flex: 1;
+            }
+        }
+        .ant-divider-horizontal {
+            margin: 12px 0;
+        }
+    }
+    .ant-card{
+        // width: 60%;
+    }
+}
+
+.ant-card:hover{
+    cursor: pointer;
+    background-color: rgb(203, 228, 245);
+    box-shadow: 0 15px 30px 0 rgba(0, 0, 0, 0.1);
+    transform: translate3d(0, -5px 0);
+}

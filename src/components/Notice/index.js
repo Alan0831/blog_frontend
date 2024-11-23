@@ -36,7 +36,12 @@ function Notice(props) {
         if (item.read === 0) {
             await request('/updateNotice', {data: { id: item.id }});
         }
-        navigate(`/article/${item.articleId}`);
+        if (item.articleId) {
+            navigate(`/article/${item.articleId}`);
+        } else {
+            navigate(`/video/${item.videoId}`);
+        }
+        
     }
 
     return (

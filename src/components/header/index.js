@@ -122,6 +122,7 @@ function Header() {
                                 </Badge>
                             </Dropdown>
                             <Button onClick={() => navigate('/writeArticle')} className="button">写文章</Button>
+                            <Button onClick={() => navigate('/uploadVideo')} className="button">上传视频</Button>
                             <Button className="button" onClick={exit}>退出</Button>
                         </div>
                     ) : (

@@ -4,12 +4,12 @@ import { request } from '../../utils/request';
 import { DeleteOutlined } from '@ant-design/icons';
 import dayjs from '../../utils/dayjs'
 import AppAvatar from '../avatar'
-import { Comment, Button, Tooltip, Input, Popconfirm, message } from 'antd'
+import { Comment, Button, Tooltip, Input, Popconfirm, message } from 'antd';
 
 const { TextArea } = Input
 
 const CommentItem = React.memo(props => {
-    const { children, item, userInfo, articleId, commentId, replyId, replyVisible } = props;
+    const { children, item, userInfo, id, commentId, replyId, replyVisible, pageType } = props;
     const { user } = item
     const [value, setValue] = useState('')
 
@@ -29,47 +29,91 @@ const CommentItem = React.memo(props => {
 
     const onSubmit= async () => {
         if (!userInfo.userId) return message.warn('您未登陆，请登录后再试。');
-        let obj = {
-            content: value,
-            userId: userInfo.userId,
-            articleId: parseInt(articleId),
-            commentId,
-            type: 2,
-            replyTo: item?.user.id,
-        }
-        let res = await request('/createComment', {data: obj});
-        if (res.status == 200) {
-            message.success('回复成功！');
-            props.setCommentList(res.data.comments);
-            props.onReply({ commentId: 0, replyId: 0 });
-
+        if (pageType == 1) {
+            let obj = {
+                content: value,
+                userId: userInfo.userId,
+                articleId: parseInt(id),
+                commentId,
+                type: 2,
+                replyTo: item?.user.id,
+            }
+            let res = await request('/createComment', {data: obj});
+            if (res.status == 200) {
+                message.success('回复成功！');
+                props.setCommentList(res.data.comments);
+                props.onReply({ commentId: 0, replyId: 0 });
+    
+            } else {
+                message.error(res.errorMessage);
+            }
         } else {
-            message.error(res.errorMessage);
+            let obj = {
+                content: value,
+                userId: userInfo.userId,
+                videoId: parseInt(id),
+                commentId,
+                type: 2,
+                replyTo: item?.user.id,
+            }
+            let res = await request('/createVideoComment', {data: obj});
+            if (res.status == 200) {
+                message.success('回复成功！');
+                props.setCommentList(res.data.videocomments);
+                props.onReply({ commentId: 0, replyId: 0 });
+    
+            } else {
+                message.error(res.errorMessage);
+            }
         }
     }
     
     // 删除评论
     const onDelete = async () => {
-        if (replyId) {
-            let obj = {type: 2, replyId};
-            let res = await request('/deleteComment', {data: obj});
-            if (res.status == 200) {
-                let commentList = [...props.commentList];
-                let tagetComment = commentList.find(c => c.id === commentId);
-                tagetComment.replies = tagetComment.replies.filter(r => r.id !== replyId);
-                props.setCommentList(commentList);
-                message.success('删除成功！');
+        if (pageType == 1) {
+            if (replyId) {
+                let obj = {type: 2, replyId};
+                let res = await request('/deleteComment', {data: obj});
+                if (res.status == 200) {
+                    let commentList = [...props.commentList];
+                    let tagetComment = commentList.find(c => c.id === commentId);
+                    tagetComment.replies = tagetComment.replies.filter(r => r.id !== replyId);
+                    props.setCommentList(commentList);
+                    message.success('删除成功！');
+                }
+            } else {
+                let obj = {type: 1, commentId};
+                let res = await request('/deleteComment', {data: obj});
+                if (res.status == 200) {
+                    let commentList = [...props.commentList];
+                    commentList = commentList.filter(c => c.id !== commentId);
+                    props.setCommentList(commentList);
+                    message.success('删除成功！');
+                }
             }
         } else {
-            let obj = {type: 1, commentId};
-            let res = await request('/deleteComment', {data: obj});
-            if (res.status == 200) {
-                let commentList = [...props.commentList];
-                commentList = commentList.filter(c => c.id !== commentId);
-                props.setCommentList(commentList);
-                message.success('删除成功！');
+            if (replyId) {
+                let obj = {type: 2, replyId};
+                let res = await request('/deleteVideoComment', {data: obj});
+                if (res.status == 200) {
+                    let commentList = [...props.commentList];
+                    let tagetComment = commentList.find(c => c.id === commentId);
+                    tagetComment.replies = tagetComment.replies.filter(r => r.id !== replyId);
+                    props.setCommentList(commentList);
+                    message.success('删除成功！');
+                }
+            } else {
+                let obj = {type: 1, commentId};
+                let res = await request('/deleteVideoComment', {data: obj});
+                if (res.status == 200) {
+                    let commentList = [...props.commentList];
+                    commentList = commentList.filter(c => c.id !== commentId);
+                    props.setCommentList(commentList);
+                    message.success('删除成功！');
+                }
             }
         }
+        
     }
 
     const handleReply = () => {
@@ -120,7 +164,7 @@ const CommentItem = React.memo(props => {
 
 const CommentList = props => {
     const userInfo = useSelector(state => state.user);
-    const { commentList, articleId } = props
+    const { commentList, id } = props
     const [replyTarget, setReplyTarget] = useState({ commentId: 0, replyId: 0 })
 
     return (
@@ -129,18 +173,18 @@ const CommentList = props => {
                 <CommentItem
                     item={comment}
                     key={comment.id}
-                    articleId={articleId}
+                    id={id}
                     userInfo={userInfo}
                     commentId={comment.id}
                     setCommentList={props.setCommentList}
                     commentList={props.commentList}
                     onReply={setReplyTarget}
                     replyVisible={replyTarget.commentId === comment.id && !replyTarget.replyId}>
-                    {comment.replies && comment.replies.map(reply => (
+                    {(comment.videoreplies || comment.replies).map(reply => (
                         <CommentItem
                             item={reply}
                             key={reply.id}
-                            articleId={articleId}
+                            id={id}
                             userInfo={userInfo}
                             commentId={comment.id}
                             replyId={reply.id}

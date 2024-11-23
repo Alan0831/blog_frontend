@@ -1,0 +1,90 @@
+.minicard-outter {
+    .minicard-main{
+        height: 300px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        background: #ffffff;
+        .minicard-top {
+            text-align: center;
+            height: 190px;
+            overflow: hidden;
+            img {
+                width: 100%;
+                height: auto;
+                transition: transform 0.7s ease; /* 平滑的过渡效果 */
+            }
+            img:hover {
+                transform: scale(1.1); /* 放大至原始大小的1.1倍 */
+            }
+        }
+        .minicard-middle {
+            margin-top: 8px;
+            .createAt {
+                text-align: left;
+                font-size: 13px;
+                color: rgb(133, 133, 133);
+                margin-left: 20px;
+            }
+            .title {
+                font-weight: bold;
+                font-size: 18px;
+                text-align: left;
+                margin-left: 20px;
+            }
+        }
+        .minicard-footer {
+            display: flex;
+            flex-direction: column;
+            margin-top: 2px;
+            .viewCount{
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                margin-left: 20px;
+            }
+        }
+        .minicard-content{
+            flex: 1;
+            display: flex;
+            flex-direction: row;
+            max-height: 200px;
+            .content-left {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-line-clamp: 4;
+                -webkit-box-orient: vertical;
+                position: relative;
+                width: 70%;
+            }
+            .mosaic-effect {
+                background-color: #f0f0f0;
+                margin: 20px;
+                filter: blur(5px); /* 模糊效果 */
+            }
+            .card-lock{
+                position: absolute;
+                left: 50%;
+                top: 50%;
+            }
+        }
+        .ant-divider-horizontal {
+            margin: 12px 0;
+        }
+    }
+    .ant-card {
+        width: 400px;
+        .ant-card-body {
+            padding: 0;
+            overflow: hidden;
+        }
+    }
+}
+
+.ant-card:hover{
+    cursor: pointer;
+    background-color: rgb(203, 228, 245);
+    box-shadow: 0 15px 30px 0 rgba(0, 0, 0, 0.1);
+    transform: translate3d(0, -5px 0);
+}

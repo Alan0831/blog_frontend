@@ -1,0 +1,38 @@
+.alan-page {
+    padding: 64px 32px;
+    .triangle {
+        z-index: 999999;
+        margin: auto;
+        /* 这个定位我是为了页面居中，好截图-结束 */
+        padding: 15px 0 15px 20px;
+        background: #fff;
+        border: 2px solid rgba(0, 0, 0, 0.75);
+        border-radius: 8px;
+    }
+    .triangle::before {
+        content: ' ';
+        position: absolute;
+        border: 8px solid transparent;
+        width: 0;
+        height: 0;
+        /* 三角形箭头在上 */
+        /* border-bottom-color: rgba(0, 0, 0, 0.75);
+        right: 12px;
+        top: -16px; */
+        
+        /* 三角形箭头在右 */
+        /* border-left-color: rgba(0, 0, 0, 0.75);
+        right: -16px;
+        top: 12px; */
+        
+        /* 三角形箭头在左 */
+        border-right-color: rgba(0, 0, 0, 0.75);
+        left: -16px;
+        top: 12px; 
+        
+        /* 三角形箭头在下 */
+        // border-top-color: rgba(0, 0, 0, 0.75);
+        // right: 12px;
+        // bottom: -16px;
+    }
+}

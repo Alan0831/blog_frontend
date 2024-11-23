@@ -37,7 +37,7 @@ function Discuss(props) {
     console.log(userInfo);
     const bus = useBus();
     const { username, userId } = userInfo;
-    const { commentList, articleId } = props;
+    const { commentList, id, pageType } = props;
     const [value, setValue] = useState('');
     const renderDropdownMenu = () =>  username ? {items: [
         {
@@ -79,20 +79,37 @@ function Discuss(props) {
 
     const handleSubmit = async () => {
         if (!value) return
-        if (!userInfo.username) return message.warn('您未登陆，请登录后再评论。')
-        let obj = {
-            content: value,
-            userId,
-            articleId: parseInt(articleId),
-            type: 1, // type:1 评论  2 回复
-        }
-        let res = await request('/createComment', {data: obj});
-        if (res.status == 200) {
-            message.success('发布评论成功！');
-            setValue('');
-            props.setCommentList(res.data.comments);
+        if (!userInfo.username) return message.warn('您未登陆，请登录后再评论。');
+        if (pageType == 1) {
+            let obj = {
+                content: value,
+                userId,
+                articleId: parseInt(id),
+                type: 1, // type:1 评论  2 回复
+            }
+            let res = await request('/createComment', {data: obj});
+            if (res.status == 200) {
+                message.success('发布评论成功！');
+                setValue('');
+                props.setCommentList(res.data.comments);
+            } else {
+                message.error(res.errorMessage);
+            }
         } else {
-            message.error(res.errorMessage);
+            let obj = {
+                content: value,
+                userId,
+                videoId: parseInt(id),
+                type: 1, // type:1 评论  2 回复
+            }
+            let res = await request('/createVideoComment', {data: obj});
+            if (res.status == 200) {
+                message.success('发布评论成功！');
+                setValue('');
+                props.setCommentList(res.data.videocomments);
+            } else {
+                message.error(res.errorMessage);
+            }
         }
     }
 
@@ -101,7 +118,7 @@ function Discuss(props) {
             <div className='discuss-header'>
                 <div>
                     <span className='discuss-count'>{calcCommentsCount(commentList)}</span>
-                    {articleId !== -1 ? '条评论' : '条留言'}
+                    {id !== -1 ? '条评论' : '条留言'}
                 </div>
                 <span className='discuss-user'>
                     <Dropdown menu={renderDropdownMenu()} trigger={['click', 'hover']}>
@@ -128,7 +145,7 @@ function Discuss(props) {
                 }
             />
 
-            <List commentList={commentList} articleId={articleId} setCommentList={props.setCommentList} />
+            <List pageType={pageType} commentList={commentList} id={id} setCommentList={props.setCommentList} />
         </div>
     )
 }

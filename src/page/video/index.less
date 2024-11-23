@@ -1,0 +1,106 @@
+.app-video{
+    min-height: 100vh;
+    height: calc(100% - 45px);
+    margin-top: 32px;
+    padding: 0 0 72px 0;
+    // background: url('../../../public/cback.jpeg');
+    // background-repeat: no-repeat;
+    // background-size: cover;
+    // background: #50a3a2;
+    // background: linear-gradient(to bottom right, #50a3a2 0%, #53e3a6 100%);
+    .post-header {
+        text-align: center;
+        padding: 20px 0;
+        border-bottom: 1px solid #e8e8e8;
+        .post-title {
+          color: #0d1a26;
+          font-size: 1.7em;
+          font-weight: 400;
+          margin-top: 0;
+        }
+        .others {
+          a {
+            color: inherit;
+          }
+          vertical-align: middle;
+          margin-top: 10px;
+          color: rgba(0, 0, 0, 0.45);
+        }
+    }
+    .post-content {
+        display: flex;
+        flex-direction: row;
+        .article-userInfo {
+            width: 20vw;
+            border-right: 1px solid #fff;
+        }
+        .article-detail {
+            flex: 1;
+            padding: 20px;
+            font-size: 17px;
+            font-weight: 800;
+            color: black;
+            font-family: "Microsoft YaHei", "SimSun", "STHeiti";
+            .video_box {
+                display: flex;
+                margin: 60px auto;
+                .video-js {
+                    margin: auto;
+                    width: 800px;
+                    height: 430px;
+                    .vjs-tech {
+                      object-fit: contain; /* 确保视频内容适应播放器容器 */
+                    }
+                }
+                .myVideo-dimensions.vjs-fluid:not(.vjs-audio-only-mode) {
+                  padding: 0;
+                }
+            }
+            .video-description {
+              width: 60%;
+              margin: auto;
+              background-color: rgb(236, 247, 257);
+              padding: 16px 10px 10px 10px;
+              p {
+                margin: 0;
+                padding: 0;
+              }
+            }
+            #discuss {
+              width: 60%;
+              margin: auto;
+            }
+        }
+        .article-director {
+          width: 20vw;
+          border-left: 1px solid #fff;
+        }
+  }
+
+  blockquote {
+    border-left: 4px solid #ccc;
+    margin-bottom: 5px;
+    margin-top: 5px;
+    padding-left: 16px;
+  }
+  code,
+  pre {
+    background-color: #f0f0f0;
+    border-radius: 3px;
+  }
+  pre {
+    white-space: pre-wrap;
+    margin-bottom: 5px;
+    margin-top: 5px;
+    padding: 5px 10px;
+  }
+  code {
+    font-size: 85%;
+    padding: 2px 4px;
+  }
+  pre.ql-syntax {
+    background-color: #23241f;
+    color: #f8f8f2;
+    overflow: visible;
+  }
+}

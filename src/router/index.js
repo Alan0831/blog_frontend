@@ -27,6 +27,21 @@ const routers = [
         components: lazy(() => import('../page/help/index'))    // 引入pages文件下的页面
     },
     {
+        path: '/alan',
+        name: '作者',
+        components: lazy(() => import('../page/alan/index'))    // 引入pages文件下的页面
+    },
+    {
+        path: '/video/:id',
+        name: '视频详情',
+        components: lazy(() => import('../page/video/index'))    // 引入pages文件下的页面
+    },
+    {
+        path: '/uploadVideo',
+        name: '上传视频',
+        components: lazy(() => import('../page/uploadVideo/index'))    // 引入pages文件下的页面
+    },
+    {
         path: '/three',
         name: 'three',
         components: lazy(() => import('../page/three/index7'))    // 引入pages文件下的页面

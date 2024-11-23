@@ -10,23 +10,22 @@ import { ALAN_AVATAR } from '../../config';
 import './index.less'
 const navigateTypeList = [
     {type: '文章', data: 9},
-    {type: '标签', data: 3},
+    {type: '测试', data: 3},
 ]
 /**
  * 作者介绍
 */
 function AlanCard(props) {
-    const { type } = props;
     const navigate = useNavigate();
     const userInfo = useSelector(state => state.user);
     useEffect(() => {
-        
+
     }, []);
 
     // 渲染跳转类型
-    const renderType = (type = '数据', data = 0, navigate = '/') => {
+    const renderType = (type = '数据', data = 0) => {
         return (
-            <div className='alan-navigate'>
+            <div className='alan-navigate' key={type}>
                 <div className='navigateName'>{type}</div>
                 <div className='navigateData'>{data}</div>
             </div>
@@ -34,7 +33,7 @@ function AlanCard(props) {
     }
 
     return (
-        <Card style={{ margin: '16px auto' }}>
+        <Card style={{ margin: '16px auto', cursor: 'default' }}>
             <div className='alan-card'>
                 <div className='alan-title'>
                     <AppAvatar style={{width: '70px', height: '70px'}} image={ALAN_AVATAR} popoverVisible={false} />
@@ -50,7 +49,7 @@ function AlanCard(props) {
                     }
                 </div>
                 <div className='alan-button'>
-                    <button>朋友圈</button>
+                    <button onClick={() => navigate('/alan')} >朋友圈</button>
                 </div>
             </div>
         </Card>

@@ -25,10 +25,10 @@ function AppAvatar(props) {
     return <AvatarComponent style={style} role={role} username={username} image={image} />
 }
 
-AppAvatar.propTypes = {
-    userInfo: PropTypes.object.isRequired,
-    popoverVisible: PropTypes.bool
-}
+// AppAvatar.propTypes = {
+//     userInfo: PropTypes.object.isRequired,
+//     popoverVisible: PropTypes.bool
+// }
 
 // AppAvatar.defaultProps = {
 //     popoverVisible: true
