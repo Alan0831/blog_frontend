@@ -17,7 +17,7 @@ export default function Home() {
     const [listData, setData] = useState([]);
     const [videoListData, setVideoListData] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [recommendArticleListData, setRecommendArticleList] = useState([]);
+    const [recommendListData, setRecommendList] = useState([]);
     const [pageNum, setPageNum] = useState(1);
     const [total, setTotal] = useState(0);
     const [keyword, setKeyword] = useState('');
@@ -27,10 +27,22 @@ export default function Home() {
 
     useEffect(() => {
         initSocket();
-        Promise.allSettled([getRecommendArticleList(), getArticleList()])
-        .then(() => console.log('加载数据完成'))
-        .catch((err) => console.error(err));
+        let lastUseMenuType = localStorage.getItem('lastUseMenuType');
+        if (lastUseMenuType) {
+            setMenuType(parseInt(lastUseMenuType));
+        }
     }, []);
+    useEffect(() => {
+        if (menuType == 1) {
+            Promise.allSettled([getRecommendArticleList(), getArticleList()])
+            .then(() => console.log('加载数据完成'))
+            .catch((err) => console.error(err));
+        } else if (menuType == 2) {
+            Promise.allSettled([getRecommendVideoList(), getVideoList()])
+            .then(() => console.log('加载数据完成'))
+            .catch((err) => console.error(err));
+        }
+    }, [menuType])
 
     const initSocket = () => {
         socket.onopen = () => {
@@ -96,7 +108,20 @@ export default function Home() {
         try {
             const res = await request('/getRecommendArticleList', { data: obj });
             if (res?.data.rows) {
-                setRecommendArticleList(res?.data.rows);
+                setRecommendList(res?.data.rows);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    //  获取今日推荐视频列表
+    const getRecommendVideoList = async (pageNum = 1, pageSize = 10, keyword = '') => {
+        let obj = {pageNum, pageSize, keyword};
+        try {
+            const res = await request('/getRecommendVideoList', { data: obj });
+            if (res?.data.rows) {
+                setRecommendList(res?.data.rows);
             }
         } catch (err) {
             console.error(err);
@@ -105,20 +130,25 @@ export default function Home() {
 
     //  点击菜单列表类型
     const clickMenu = (type) => {
-        console.log(type);
         setMenuType(type);
-        if (type == 2 && videoListData.length == 0) {
-            getVideoList();
-        }
+        localStorage.setItem('lastUseMenuType', type);
     }
 
     //  翻页
     const changePage = (page) => {
-        getArticleList(page, 10, keyword);
+        if (menuType == 1) {
+            getArticleList(page, 10, keyword);
+        } else {
+            getVideoList(page, 10, keyword);
+        }
     }
 
     const handlePressEnter = () => {
-        getArticleList(1, 10, keyword);
+        if (menuType == 1) {
+            getArticleList(1, 10, keyword);
+        } else {
+            getVideoList(1, 10, keyword);
+        }
     }
 
     return (
@@ -164,7 +194,7 @@ export default function Home() {
                             </div>
                         </div>
                         <div className='home_right_content'>
-                            <Recommend  type={1} articleList={recommendArticleListData}></Recommend>
+                            <Recommend  type={menuType == 1 ? 1 : 3} articleList={recommendListData}></Recommend>
                         </div>
                     </div>
                 </div>

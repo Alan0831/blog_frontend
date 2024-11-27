@@ -6,7 +6,7 @@ import { useDispatch } from 'react-redux'
 import { useListener } from '../../hooks/useBus';
 import { get } from '../../utils/storage';
 import { loginout } from '../../redux/user/actions'
-import { FileTextOutlined, IdcardOutlined, KeyOutlined, NotificationOutlined, PaperClipOutlined } from '@ant-design/icons';
+import { FileTextOutlined, IdcardOutlined, KeyOutlined, NotificationOutlined, PaperClipOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { useLocation } from 'react-router-dom';
 import './index.less'
 
@@ -28,6 +28,15 @@ function Header() {
                 </div>
             ),
             icon: <FileTextOutlined />,
+        },
+        {
+            key: '6',
+            label: (
+                <div onClick={() => navigate('/help', { state: { key: '6' } })} >
+                    我的视频
+                </div>
+            ),
+            icon: <VideoCameraOutlined />,
         },
         {
             key: '2',

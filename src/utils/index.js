@@ -14,7 +14,6 @@ export const decodeQuery = url => {
 
 // 计算 评论数
 export const calcCommentsCount = commentList => {
-  console.log(commentList)
   if (!commentList) return 0;
   let count = commentList.length;
   commentList.forEach(item => {

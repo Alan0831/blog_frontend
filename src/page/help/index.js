@@ -3,12 +3,13 @@ import './index.less';
 import { useNavigate } from 'react-router-dom';
 import { Tabs, Modal } from 'antd';
 import MyArticle from '../../components/MyArticle';
+import MyVideo from '../../components/MyVideo';
 import MyInfo from '../../components/MyInfo';
 import Notice from '../../components/Notice';
 import ChangePassword from '../../components/changePassword';
 import Collection from '../../components/Collection';
 import { useSelector } from 'react-redux';
-import { FileTextOutlined, IdcardOutlined, KeyOutlined, NotificationOutlined, PaperClipOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { FileTextOutlined, IdcardOutlined, KeyOutlined, NotificationOutlined, PaperClipOutlined, ExclamationCircleOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { useLocation } from 'react-router-dom';
 /**
  * 帮助中心
@@ -40,6 +41,11 @@ function Help() {
             label: (<div><FileTextOutlined />我的文章</div>),
             key: '1',
             children: <MyArticle userInfo={userInfo}></MyArticle>,
+        },
+        {
+            label: (<div><VideoCameraOutlined />我的视频</div>),
+            key: '6',
+            children: <MyVideo userInfo={userInfo}></MyVideo>,
         },
         {
             label: (<div><IdcardOutlined />个人信息</div>),

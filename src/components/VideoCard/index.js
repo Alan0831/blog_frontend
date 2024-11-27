@@ -71,7 +71,7 @@ function VideoCard(props) {
             ) : (
               <div className='card-content'>
                 <div className='content-left'>{content}</div>
-                <div className='content-right'><img src={videoInfo.articleCover ? videoInfo.articleCover : 'http://commit-alan.oss-cn-beijing.aliyuncs.com/uploads/894982879e71cf98f9d008b99bc73089.webp'}></img></div>
+                <div className='content-right'><img src={videoInfo.poster ? videoInfo.poster : 'http://commit-alan.oss-cn-beijing.aliyuncs.com/uploads/894982879e71cf98f9d008b99bc73089.webp'}></img></div>
               </div>
             )
           }

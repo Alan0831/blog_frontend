@@ -30,12 +30,12 @@ function Video() {
     });
     const videoRef = useRef(null);
     const userInfo = useSelector(state => state.user);
-    const { content, title, createdAt, viewCount, videocomments = [], collectionCount, isCollected } = videoInfo;
+    const { content, title, poster, createdAt, viewCount, videocomments = [], collectionCount, isCollected } = videoInfo;
 
     useEffect(() => {
         getArticle();
         return destroyVideo;
-    },[id]);
+    }, [id]);
 
     // 销毁video实例
     const destroyVideo = () => {
@@ -44,12 +44,12 @@ function Video() {
 
     //  获取文章详情
     const getArticle = async () => {
-        let res = await request('/findVideoById', {data: {id: parseInt(id), owner: parseInt(userInfo.userId)}});
+        let res = await request('/findVideoById', { data: { id: parseInt(id), owner: parseInt(userInfo.userId) } });
         if (res.status == 200) {
             let data = res.data;
             setVideoInfo(data);
             // setVideoUrl(data.videoUrl);
-            initVideo(data.videoUrl);
+            initVideo(data.videoUrl, data.poster);
             // setTagList(JSON.parse(data.tagList));
         } else {
             message.error(res.errorMessage);
@@ -72,14 +72,14 @@ function Video() {
         }
         try {
             let data = {
-                collectionArticleId: parseInt(id),
+                collectionVideoId: parseInt(id),
                 owner: parseInt(userInfo.userId),
             }
-            await request('/addCollection', {data});
+            await request('/addVideoCollection', { data });
             message.success('添加收藏成功');
-            setArticle({...article, isCollected: true, collectionCount: collectionCount + 1});
+            setVideoInfo({ ...videoInfo, isCollected: true, collectionCount: collectionCount + 1 });
         } catch (err) {
-            message.error('添加收藏失败:' + err );
+            message.error('添加收藏失败:' + err);
             console.error(err);
         }
     }
@@ -88,14 +88,14 @@ function Video() {
     const deleteCollection = async () => {
         try {
             let data = {
-                collectionArticleId: parseInt(id),
+                collectionVideoId: parseInt(id),
                 owner: parseInt(userInfo.userId),
             }
-            await request('/deleteCollection', {data});
+            await request('/deleteVideoCollection', { data });
             message.success('取消收藏成功');
-            setArticle({...article, isCollected: false, collectionCount: collectionCount - 1});
+            setVideoInfo({ ...videoInfo, isCollected: false, collectionCount: collectionCount - 1 });
         } catch (err) {
-            message.error('取消收藏失败:' + err );
+            message.error('取消收藏失败:' + err);
             console.error(err);
         }
     }
@@ -103,13 +103,13 @@ function Video() {
     //  刷新子组件传来的评论列表
     const setCommentList = (commentList) => {
         console.log(commentList)
-        setVideoInfo({...videoInfo, videocomments: commentList});
+        setVideoInfo({ ...videoInfo, videocomments: commentList });
     }
 
-    const initVideo = (videoUrl) => {
+    const initVideo = (videoUrl, poster) => {
         const myPlayer = videojs("#myVideo", {
             controls: true, //是否显示控制条
-            poster: 'https://commit-alan.oss-cn-beijing.aliyuncs.com/uploads/1a8411085c1aa38f45d44c84127152e6.webp', // 视频封面图地址
+            poster: poster ? poster : '', // 视频封面图地址
             muted: true, // 是否静音
             preload: 'auto', //预加载
             autoplay: false, //是否自动播放
@@ -121,7 +121,7 @@ function Video() {
             currentTimeDisplay: true,
             controlBar: { // 设置控制条组件
                 // currentTimeDisplay: true,   // 当前时间
-                timeDivider: true,  
+                timeDivider: true,
                 playToggle: true,   //  播放按钮
                 // progressControl: true,  //  进度条
                 volumePanel: {  //  音量控制
@@ -131,9 +131,14 @@ function Video() {
             sources: [ // 视频源
                 {
                     src: videoUrl,
-                    type: 'video/mp4',
-                    poster: 'https://commit-alan.oss-cn-beijing.aliyuncs.com/uploads/1a8411085c1aa38f45d44c84127152e6.webp'
+                    type: 'application/x-mpegURL',
+                    poster: poster ? poster : '',
                 },
+                // {
+                //     src: 'https://commit-alan.oss-cn-beijing.aliyuncs.com/videos/file-1732636470699/file-1732636470699.m3u8',
+                //     type: 'application/x-mpegURL',
+                //     poster: poster ? poster : '',
+                // },
             ]
         }, function onPlayReady() {
             console.log('视频可以播放啦~~~');
@@ -210,7 +215,7 @@ function Video() {
                         </a>
                         <EyeOutlined style={{ margin: '0 2px 0 5px' }} />
                         <span style={{ marginRight: 5 }}>{viewCount}</span>
-                        <span onClick={updateCollection} style={{cursor: 'pointer'}}>
+                        <span onClick={updateCollection} style={{ cursor: 'pointer' }}>
                             {isCollected ? <StarTwoTone twoToneColor="#e0730d" style={{ margin: '0 2px 0 5px' }} /> : <StarOutlined style={{ margin: '0 2px 0 5px' }} />}
                             <span style={{ marginRight: 5 }}>{collectionCount}</span>
                         </span>
