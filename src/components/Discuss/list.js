@@ -164,7 +164,7 @@ const CommentItem = React.memo(props => {
 
 const CommentList = props => {
     const userInfo = useSelector(state => state.user);
-    const { commentList, id } = props
+    const { commentList, id, pageType } = props
     const [replyTarget, setReplyTarget] = useState({ commentId: 0, replyId: 0 })
 
     return (
@@ -179,6 +179,7 @@ const CommentList = props => {
                     setCommentList={props.setCommentList}
                     commentList={props.commentList}
                     onReply={setReplyTarget}
+                    pageType={pageType}
                     replyVisible={replyTarget.commentId === comment.id && !replyTarget.replyId}>
                     {(comment.videoreplies || comment.replies).map(reply => (
                         <CommentItem
@@ -191,6 +192,7 @@ const CommentList = props => {
                             setCommentList={props.setCommentList}
                             commentList={props.commentList}
                             onReply={setReplyTarget}
+                            pageType={pageType}
                             replyVisible={replyTarget.commentId === comment.id && replyTarget.replyId === reply.id}
                         />
                     ))}

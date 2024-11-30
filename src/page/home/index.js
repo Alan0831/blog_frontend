@@ -190,7 +190,7 @@ export default function Home() {
                                 }
                             </div>
                             <div className='home_pagination'>
-                                <Pagination current={pageNum} total={total} onChange={changePage} pageSize={10} />
+                                {total > 10 ? <Pagination current={pageNum} total={total} onChange={changePage} pageSize={10} /> : null}             
                             </div>
                         </div>
                         <div className='home_right_content'>

@@ -3,6 +3,7 @@ const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WebpackBar = require('webpackbar'); 
 const { ProvidePlugin, DefinePlugin  } = require('webpack');
+const WebpackAssetsManifest = require('webpack-assets-manifest');
 
 module.exports = {
   entry: path.resolve(__dirname, '../src/index.js'),
@@ -45,6 +46,13 @@ module.exports = {
             }
           }
       },
+      {
+        test: /\.(svg)$/i,
+        type: 'asset/resource',
+        generator: {
+          filename: 'images/[hash][ext][query]'
+        }
+      },
     ]
   },
   plugins: [
@@ -65,6 +73,11 @@ module.exports = {
     }),
     new DefinePlugin({ 
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV) 
+    }),
+    new WebpackAssetsManifest({
+      output: 'asset-manifest.json',
+      publicPath: true,
+      writeToDisk: true,
     }),
   ],
   devServer: {

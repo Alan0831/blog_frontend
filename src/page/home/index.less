@@ -3,23 +3,27 @@
     /* min-height: 1000px;
     max-height: 2000px; */
     padding-top: 45px;
-    height: 100vh;
+    // height: 100vh;
     overflow-y: auto;
     background: url('../../../public/back.jpg');
     /* background-repeat: no-repeat; */
     background-size: cover;
+    background-attachment: fixed;
     -webkit-background-size: cover;
     -o-background-size: cover;
     background-position: center 0;
+
     .home_under_content {
         margin-top: 27px;
         display: flex;
         flex-direction: row;
+
         .home_left_content {
             width: 20vw;
             height: 100%;
             color: aqua;
             border-right: 1px solid #fff;
+
             .home_search {
                 text-align: left;
                 margin: 16px auto;
@@ -27,15 +31,19 @@
                 width: 90%;
             }
         }
+
         .home_middle_content {
-           flex: 1;
-           width: calc(100% - 40vw);
+            flex: 1;
+            width: calc(100% - 40vw);
+
             .home_list {
+
                 // max-height: 1000px;
                 .ant-list-item {
                     width: 100%;
                 }
             }
+
             .home_pagination {
                 display: flex;
                 align-items: center;
@@ -43,6 +51,7 @@
                 justify-content: flex-end;
             }
         }
+
         .home_right_content {
             width: 20vw;
             height: 100%;
@@ -55,71 +64,84 @@
 .wave1 {
     background: url('../../../public/wave-1.png');
 }
+
 .wave2 {
     background: url('../../../public/wave-2.png');
 }
-  @keyframes move_wave {
-      0% {
-          transform: translateX(0) translateZ(0) scaleY(1)
-      }
-      50% {
-          transform: translateX(-25%) translateZ(0) scaleY(1)
-      }
-      100% {
-          transform: translateX(-50%) translateZ(0) scaleY(1)
-      }
-  }
-  .tnwave {
-      overflow: hidden;
-      position: absolute;
-      z-index: 999;
-      height: 5%;
-      left: 0;
-      right: 0;
-      bottom: 0;
-  }
-  .waveWrapperInner {
-      position: absolute;
-      width: 100%;
-      overflow: hidden;
-      height: 100%;
-  }
-  .wave {
-      position: absolute;
-      left: 0;
-      width: 200%;
-      height: 100%;
-      background-repeat: repeat no-repeat;
-      background-position: 0 bottom;
-      transform-origin: center bottom;
-  }
-  
-  .bgTop {
-      opacity: 0.4;
-  }
-  .waveTop {
-      background-size: 50% 45px;
-  }
-  .waveAnimation .waveTop {
+
+@keyframes move_wave {
+    0% {
+        transform: translateX(0) translateZ(0) scaleY(1)
+    }
+
+    50% {
+        transform: translateX(-25%) translateZ(0) scaleY(1)
+    }
+
+    100% {
+        transform: translateX(-50%) translateZ(0) scaleY(1)
+    }
+}
+
+.tnwave {
+    overflow: hidden;
+    position: absolute;
+    z-index: 999;
+    height: 5%;
+    left: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.waveWrapperInner {
+    position: absolute;
+    width: 100%;
+    overflow: hidden;
+    height: 100%;
+}
+
+.wave {
+    position: absolute;
+    left: 0;
+    width: 200%;
+    height: 100%;
+    background-repeat: repeat no-repeat;
+    background-position: 0 bottom;
+    transform-origin: center bottom;
+}
+
+.bgTop {
+    opacity: 0.4;
+}
+
+.waveTop {
+    background-size: 50% 45px;
+}
+
+.waveAnimation .waveTop {
     animation: move_wave 4s linear infinite;
-  }
-  
-  .bgMiddle {
-      opacity: 0.6;
-  }
-  .waveMiddle {
-      background-size: 50% 40px;
-  }
-  .waveAnimation .waveMiddle {
-      animation: move_wave 3.5s linear infinite;
-  }
-  
-  .bgBottom {
-      opacity: 0.95;
-  }
-  .waveBottom {
-      background-size: 50% 35px;
-  }
-  .waveAnimation .waveBottom {
-      animation: move_wave 2s linear infinite;
-  }
+}
+
+.bgMiddle {
+    opacity: 0.6;
+}
+
+.waveMiddle {
+    background-size: 50% 40px;
+}
+
+.waveAnimation .waveMiddle {
+    animation: move_wave 3.5s linear infinite;
+}
+
+.bgBottom {
+    opacity: 0.95;
+}
+
+.waveBottom {
+    background-size: 50% 35px;
+}
+
+.waveAnimation .waveBottom {
+    animation: move_wave 2s linear infinite;
+}

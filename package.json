@@ -113,6 +113,7 @@
     "videojs-flash": "^2.2.1",
     "videojs-flvjs-es6": "^1.0.1",
     "web-vitals": "^2.1.4",
+    "webpack-assets-manifest": "^5.2.1",
     "webpack-dev-middleware": "^7.4.2",
     "webpack-dev-server": "^5.1.0",
     "webpack-manifest-plugin": "^4.0.2",

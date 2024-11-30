@@ -91,10 +91,9 @@ export function debounce(func, wait) {
 }
 
 // 生成 color
-export function genertorColor(list = [], colorList = COLOR_LIST) {
-  const _list = [...list]
-  _list.forEach((l, i) => {
-    l.color = colorList[i] || colorList[randomIndex(colorList)]
-  })
-  return _list
+export function getRandomColor() {
+  var r = Math.floor(Math.random() * 256);
+  var g = Math.floor(Math.random() * 256);
+  var b = Math.floor(Math.random() * 256);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
 }

@@ -173,7 +173,7 @@ function Article() {
                     </div>
                     <div className='article-detail'>
                         <div className='article_de2'><div dangerouslySetInnerHTML={{ __html: content }} /></div>
-                        <Discuss articleId={id} commentList={comments} setCommentList={setCommentList} />
+                        <Discuss pageType={1} id={id} commentList={comments} setCommentList={setCommentList} />
                     </div>
                     {isHaveDirector ? (
                         <div className='article-director'>

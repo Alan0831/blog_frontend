@@ -8,6 +8,7 @@
     justify-content: space-between;
     background-color: aliceblue;
     position: fixed;
+    transition: opacity 0.5s ease ;
     top: 0;
     .header_left {
         color: black;
@@ -20,6 +21,23 @@
         margin-right: 5%;
         display: flex;
         align-items: center;
+    }
+    .header_part {
+      cursor: pointer;
+      transition: color 0.5s ease;
+      font-family: 'Arial', sansserif;
+      margin-left: 10px;
+      img {
+        width: 25px;
+        margin-top: -6px;
+      }
+      span {
+        font-size: 17px;
+        margin-left: 5px;
+      }
+    }
+    .header_part:hover {
+      color: #18c0ff;
     }
     .button {
         margin-left: 16px;
