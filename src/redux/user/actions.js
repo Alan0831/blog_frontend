@@ -8,10 +8,12 @@ export const login = params => {
   }
   return dispatch =>
     request('/doLogin', { data: params }).then(res => {
-      dispatch({
-        type: TYPES.USER_LOGIN,
-        payload: res.data,
-      })
+      if (res.status == 200) {
+        dispatch({
+          type: TYPES.USER_LOGIN,
+          payload: res.data,
+        })
+      }
       return res;
     })
 }
@@ -22,6 +24,9 @@ export const edit = params => ({
 })
 
 export const register = params => {
+  if (params.password !== undefined) {
+    params.password = PSW.default.encrypt(params.password);
+  }
   return dispatch =>
     request('/doregister', { data: params }).then(res => {
       return res;

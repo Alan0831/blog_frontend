@@ -3,7 +3,7 @@ import { Card, Form, Input, Button, message, Spin, Tabs } from 'antd'
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { request } from '../../utils/request';
-import { login } from '../../redux/user/actions'
+import { login, register } from '../../redux/user/actions'
 import { useDispatch } from 'react-redux';
 import useBus from '../../hooks/useBus';
 import './index.less'
@@ -35,6 +35,7 @@ function Login() {
             password: values.password
         }
         dispatch(login(obj)).then((res) => {
+            console.log(res);
             if (res.status === 200) {
                 message.success('登录成功！');
                 formLogin.resetFields();
@@ -52,21 +53,28 @@ function Login() {
             message.error('请填写用户名、邮箱以及密码！');
             return;
         }
+        if (values.password != values.confirmPassword) {
+            message.error('两次密码输入不一致！');
+            return;
+        }
         let obj = {
             username: values.username,
             password: values.password,
             email: values.email,
         }
-        const res = await request('/doregister', { data: obj });
-        if (res.status === 200) {
-            message.success('注册成功！');
-            setActive('login');
-            setNowstatus('login');
-            formRegister.resetFields();
-        } else {
-            message.error(res.errorMessage);
-            formRegister.resetFields();
-        }
+        // const res = await request('/doregister', { data: obj });
+        dispatch(register(obj)).then((res) => {
+            console.log(res);
+            if (res.status === 200) {
+                message.success('注册成功！');
+                setActive('login');
+                setNowstatus('login');
+                formRegister.resetFields();
+            } else {
+                message.error(res.errorMessage);
+                formRegister.resetFields();
+            }
+        })
     }
 
     //  切换至注册弹窗
@@ -161,6 +169,16 @@ function Login() {
                                         prefix={<LockOutlined />}
                                         type="password"
                                         placeholder="密码"
+                                    />
+                                </Form.Item>
+                                <Form.Item
+                                    name="confirmPassword"
+                                    label='确认密码'
+                                >
+                                    <Input
+                                        prefix={<LockOutlined />}
+                                        type="password"
+                                        placeholder="确认密码"
                                     />
                                 </Form.Item>
                                 <div className='center'>

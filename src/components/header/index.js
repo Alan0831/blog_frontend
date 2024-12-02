@@ -14,6 +14,7 @@ const shengdanreyin = require('../../../public/icon/shengdanreyin.svg');
 const xiaolu = require('../../../public/icon/xiaolu.svg');
 const xiaoxiong = require('../../../public/icon/xiaoxiong.svg');
 const shengdanmao = require('../../../public/icon/shengdanmao.svg');
+const shengdanwu = require('../../../public/icon/shengdanwu.svg');
 import './index.less'
 
 function Header() {
@@ -104,12 +105,12 @@ function Header() {
         {
             title: '登录',
             img: xiaolu,
-            cb: () => navigate('/login', { state: { nowStatus: 'login' } })
+            cb: () => location.pathname !== '/login' && navigate('/login', { state: { nowStatus: 'login' } })
         },
         {
             title: '注册',
             img: xiaoxiong,
-            cb: () => navigate('/login', { state: { nowStatus: 'register' } })
+            cb: () => location.pathname !== '/login' && navigate('/login', { state: { nowStatus: 'register' } })
         },
     ];
 
@@ -178,9 +179,15 @@ function Header() {
             <div className='header_left'>
                 {
                     !isHomePage && (
-                        <div onClick={() => navigate(-1)} className='header_part'>
-                            <img src={shengdanmao}></img>
-                            <span>返回</span>
+                        <div className='header_left_left'>
+                            <div onClick={() => navigate('/')} className='header_part'>
+                                <img src={shengdanwu}></img>
+                                <span>首页</span>
+                            </div>
+                            <div onClick={() => navigate(-1)} className='header_part'>
+                                <img src={shengdanmao}></img>
+                                <span>返回</span>
+                            </div>
                         </div>
                     )
                 }

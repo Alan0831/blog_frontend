@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import './index.less'
 import { request } from '../../utils/request';
 import { Button, Input, message, Upload } from 'antd'
-import MdEditor from '../../components/MdEditor'
+import { uploadFileChunk } from '../../utils/uploadFile';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { UploadOutlined, PlusOutlined } from '@ant-design/icons';
@@ -67,43 +67,43 @@ function WriteArticle(props) {
     }
   }
 
-    // 修改
-    const edit = async () => {
-      console.log('修改');
-      let { userId: authorId } = userInfo;
-      if (!title) {
-        message.warning('请输入标题！');
-        return;
-      }
-      if (!content) {
-        message.warning('你的内容捏？');
-        return;
-      }
-      if (!authorId) {
-        message.warning('请先登陆！');
-        return;
-      }
-      if (!videoUrl) {
-        message.warning('你的视频捏！');
-        return;
-      }
-      let obj = {
-        videoId,
-        title,
-        content,
-        authorId,
-        videoUrl,
-        visibleType: 1,
-        poster: imageUrl,
-      };
-      const res = await request('/editVideo', { data: obj });
-      if (res.status == 200) {
-        message.success('修改成功！');
-        navigate('/help', { state: { key: '6' } });
-      } else {
-        message.error(res.errorMessage);
-      }
+  // 修改
+  const edit = async () => {
+    console.log('修改');
+    let { userId: authorId } = userInfo;
+    if (!title) {
+      message.warning('请输入标题！');
+      return;
     }
+    if (!content) {
+      message.warning('你的内容捏？');
+      return;
+    }
+    if (!authorId) {
+      message.warning('请先登陆！');
+      return;
+    }
+    if (!videoUrl) {
+      message.warning('你的视频捏！');
+      return;
+    }
+    let obj = {
+      videoId,
+      title,
+      content,
+      authorId,
+      videoUrl,
+      visibleType: 1,
+      poster: imageUrl,
+    };
+    const res = await request('/editVideo', { data: obj });
+    if (res.status == 200) {
+      message.success('修改成功！');
+      navigate('/help', { state: { key: '6' } });
+    } else {
+      message.error(res.errorMessage);
+    }
+  }
 
   //  获取视频详情
   const getVideo = async (id) => {
@@ -151,40 +151,34 @@ function WriteArticle(props) {
     }
     return isJpgOrPng && isLt2M;
   };
+
   // 处理视频上传
   const uploadVideo = async (config) => {
-    // 通过FormData构造函数创建一个空对象
-    const formData = new FormData();
-    // 通过append方法来追加数据
-    formData.append('file', config.file);
-    axios.post('/commit/api/uploadBigVideo', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    }).then(res => {
+    uploadFileChunk(config.file, (url) => {
+      console.log(url);
       // 更新 fileList 以包含新上传的文件
       setFile(prevFileList => {
         return [{
           uid: prevFileList[0].uid,
           name: prevFileList[0].name,
           status: 'done', // 设置状态为 'done'
-          url: res?.data.data.videoUrl, // 文件的URL
+          url: url, // 文件的URL
         }];
       });
-      setVideoUrl(res?.data.data.videoUrl);
-    }).catch(error => {
-      console.error(error);
+      setVideoUrl(url);
+    }, () => {
       setFile(prevFileList => {
         return [{
           uid: prevFileList[0].uid,
           name: prevFileList[0].name,
-          status: 'error', // 设置状态为 'done'
+          status: 'error', // 设置状态为 'error'
           url: '', // 文件的URL
         }];
       });
       setVideoUrl('');
-    })
+    });
   }
+
   // 处理视频封面上传
   const uploadVideo2 = async (config) => {
     // 通过FormData构造函数创建一个空对象

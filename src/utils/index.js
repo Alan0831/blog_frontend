@@ -1,6 +1,4 @@
 
-import { COLOR_LIST } from '../config'
-
 // 获取 url query 参数
 export const decodeQuery = url => {
   const params = {}
@@ -80,11 +78,11 @@ export function RandomId(len) {
  */
 export function debounce(func, wait) {
   let timer = null
-  return function() {
+  return function () {
     const context = this
     const args = arguments
     clearTimeout(timer)
-    timer = setTimeout(function() {
+    timer = setTimeout(function () {
       func.apply(context, args)
     }, wait)
   }
