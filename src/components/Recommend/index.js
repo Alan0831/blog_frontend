@@ -8,6 +8,7 @@ import { useSelector } from 'react-redux';
 import './index.less'
 /**
  * 推荐文章/猜你喜欢
+ * 1 文章 2 猜你喜欢 3 视频
 */
 function Recommend(props) {
     const { type } = props;
@@ -97,4 +98,4 @@ function Recommend(props) {
     )
 }
 
-export default Recommend
+export default React.memo(Recommend)

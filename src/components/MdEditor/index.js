@@ -292,9 +292,9 @@ function MdEditor(props) {
     if (!isJpgOrPng) {
       message.error('仅支持jpeg、png、webp格式的图片哦!');
     }
-    const isLt2M = file.size / 1024 / 1024 < 2;
+    const isLt2M = file.size / 1024 / 1024 < 10;
     if (!isLt2M) {
-      message.error('仅支持2M以下的图片哦!');
+      message.error('仅支持10M以下的图片哦!');
     }
     return isJpgOrPng && isLt2M;
   };

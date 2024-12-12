@@ -8,16 +8,18 @@ import { useSelector } from 'react-redux';
 import { ALAN_AVATAR } from '../../config';
 
 import './index.less'
-const navigateTypeList = [
-    {type: '文章', data: 9},
-    {type: '测试', data: 3},
-]
+
 /**
  * 作者介绍
 */
 function AlanCard(props) {
     const navigate = useNavigate();
     const userInfo = useSelector(state => state.user);
+    const { articleTotal, videoTotal } = props;
+    const navigateTypeList = [
+        {type: '文章', data: articleTotal},
+        {type: '视频', data: videoTotal},
+    ]
     useEffect(() => {
 
     }, []);
@@ -56,4 +58,4 @@ function AlanCard(props) {
     )
 }
 
-export default AlanCard
+export default React.memo(AlanCard)

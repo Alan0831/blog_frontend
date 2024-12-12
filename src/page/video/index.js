@@ -33,13 +33,18 @@ function Video() {
     const { content, title, poster, createdAt, viewCount, videocomments = [], collectionCount, isCollected } = videoInfo;
 
     useEffect(() => {
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: 'smooth'
+        });
         getArticle();
         return destroyVideo;
     }, [id]);
 
     // 销毁video实例
     const destroyVideo = () => {
-        videoRef.current.dispose();
+        videoRef.current && videoRef.current.dispose();
     }
 
     //  获取文章详情
@@ -131,6 +136,7 @@ function Video() {
             sources: [ // 视频源
                 {
                     src: videoUrl,
+                    // src: 'http://www.alanarmstrong.xyz/videoPath/e947225401a97c5cf5e5da8800ec7635.mp4/e947225401a97c5cf5e5da8800ec7635.mp4.m3u8',
                     type: 'application/x-mpegURL',
                     poster: poster ? poster : '',
                 },

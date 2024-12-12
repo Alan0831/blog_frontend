@@ -1,89 +1,128 @@
 #discuss {
-    font-family: 'Lato', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    .discuss-header {
-      padding: 20px;
-      color: #555;
-      font-size: 16px;
-      .discuss-count {
-        color: #6190e8;
-        border-bottom: 1px dotted #6190e8;
-        margin-right: 5px;
-      }
-      .hr {
-        margin: 10px 0 0 0;
-      }
-      .discuss-user {
-        display: flex;
-        justify-content: end;
-        cursor: pointer;
-      }
+  font-family: "阿里妈妈方圆体 VF Regular";
+
+  .discuss-header {
+    padding: 20px;
+    color: #555;
+    font-size: 16px;
+
+    .discuss-count {
+      color: #6190e8;
+      border-bottom: 1px dotted #6190e8;
+      margin-right: 5px;
     }
-    .controls {
+
+    .hr {
+      margin: 10px 0 0 0;
+    }
+
+    .discuss-user {
+      display: flex;
+      justify-content: end;
+      cursor: pointer;
+    }
+  }
+
+  .controls {
+    float: right;
+    margin-top: 20px;
+
+    .controls-tip-icon {
+      color: #6190e8;
+      margin-right: 4px;
+    }
+
+    .controls-tip {
+      margin-right: 20px;
+      color: #6190e8;
+    }
+  }
+
+  .reply-form {
+    overflow: hidden;
+
+    .reply-form-controls {
       float: right;
-      .controls-tip-icon {
-        color: #6190e8;
-        margin-right: 4px;
-      }
-      .controls-tip {
-        margin-right: 20px;
-        color: #6190e8;
-      }
-    }
-  
-    .reply-form {
-      overflow: hidden;
-      .reply-form-controls {
-        float: right;
-        padding: 10px 0;
-        .tip {
-          color: #c2c2c2;
-          margin-right: 8px;
-          font-size: 13px;
-        }
+      padding: 10px 0;
+
+      .tip {
+        color: #c2c2c2;
+        margin-right: 8px;
+        font-size: 13px;
       }
     }
-  
-    .ant-comment-content:hover {
-      .icon-delete {
-        display: inline-block;
-      }
-    }
-  
-    .ant-popover-open {
-      .icon-delete {
-        display: inline-block;
-      }
-    }
-  
-    .icon-delete.active {
+  }
+
+  .content {
+    border-radius: 8px;
+    background-color: rgb(247, 249, 254);
+    padding: 8px 16px 8px 16px;
+    font-family: "阿里妈妈方圆体 VF Regular";
+  }
+
+  .ant-comment-content:hover {
+    .icon-delete {
       display: inline-block;
     }
-  
-    .ant-comment-inner {
-      padding: 6px 0;
-    }
-  
-    .ant-comment-actions {
-      margin-top: 0;
-    }
-    .ant-comment-content-detail p {
-      white-space: inherit;
-      margin-bottom: 0;
+  }
+
+  .ant-popover-open {
+    .icon-delete {
+      display: inline-block;
     }
   }
-  
-  @media screen and (max-width: 736px) {
-    .controls {
+
+  .icon-delete.active {
+    display: inline-block;
+  }
+
+  .ant-comment-inner {
+    padding: 6px 0;
+  }
+
+  .ant-comment-actions {
+    margin-top: 0;
+  }
+
+  .ant-comment-content-detail p {
+    white-space: inherit;
+    margin-bottom: 0;
+  }
+
+  .ant-comment-content-author-name {
+    span {
+      color: #e0730d;
+    }
+  }
+}
+
+.button {
+  margin-left: 16px;
+  display: inline-block;
+  border: none;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 20px;
+}
+
+.button:hover {
+  animation: jelly 0.5s;
+}
+
+@media screen and (max-width: 736px) {
+  .controls {
+    width: 100%;
+    margin-top: -10px;
+
+    .disscus-btn {
       width: 100%;
-      margin-top: -10px;
-  
-      .disscus-btn {
-        width: 100%;
-      }
-      .controls-tip,
-      .controls-tip-icon {
-        display: none;
-      }
+    }
+
+    .controls-tip,
+    .controls-tip-icon {
+      display: none;
     }
   }
-  
+}

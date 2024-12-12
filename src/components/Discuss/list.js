@@ -27,7 +27,7 @@ const CommentItem = React.memo(props => {
         }
     }
 
-    const onSubmit= async () => {
+    const onSubmit = async () => {
         if (!userInfo.userId) return message.warn('您未登陆，请登录后再试。');
         if (pageType == 1) {
             let obj = {
@@ -38,12 +38,12 @@ const CommentItem = React.memo(props => {
                 type: 2,
                 replyTo: item?.user.id,
             }
-            let res = await request('/createComment', {data: obj});
+            let res = await request('/createComment', { data: obj });
             if (res.status == 200) {
                 message.success('回复成功！');
                 props.setCommentList(res.data.comments);
                 props.onReply({ commentId: 0, replyId: 0 });
-    
+
             } else {
                 message.error(res.errorMessage);
             }
@@ -56,24 +56,24 @@ const CommentItem = React.memo(props => {
                 type: 2,
                 replyTo: item?.user.id,
             }
-            let res = await request('/createVideoComment', {data: obj});
+            let res = await request('/createVideoComment', { data: obj });
             if (res.status == 200) {
                 message.success('回复成功！');
                 props.setCommentList(res.data.videocomments);
                 props.onReply({ commentId: 0, replyId: 0 });
-    
+
             } else {
                 message.error(res.errorMessage);
             }
         }
     }
-    
+
     // 删除评论
     const onDelete = async () => {
         if (pageType == 1) {
             if (replyId) {
-                let obj = {type: 2, replyId};
-                let res = await request('/deleteComment', {data: obj});
+                let obj = { type: 2, replyId };
+                let res = await request('/deleteComment', { data: obj });
                 if (res.status == 200) {
                     let commentList = [...props.commentList];
                     let tagetComment = commentList.find(c => c.id === commentId);
@@ -82,8 +82,8 @@ const CommentItem = React.memo(props => {
                     message.success('删除成功！');
                 }
             } else {
-                let obj = {type: 1, commentId};
-                let res = await request('/deleteComment', {data: obj});
+                let obj = { type: 1, commentId };
+                let res = await request('/deleteComment', { data: obj });
                 if (res.status == 200) {
                     let commentList = [...props.commentList];
                     commentList = commentList.filter(c => c.id !== commentId);
@@ -93,8 +93,8 @@ const CommentItem = React.memo(props => {
             }
         } else {
             if (replyId) {
-                let obj = {type: 2, replyId};
-                let res = await request('/deleteVideoComment', {data: obj});
+                let obj = { type: 2, replyId };
+                let res = await request('/deleteVideoComment', { data: obj });
                 if (res.status == 200) {
                     let commentList = [...props.commentList];
                     let tagetComment = commentList.find(c => c.id === commentId);
@@ -103,8 +103,8 @@ const CommentItem = React.memo(props => {
                     message.success('删除成功！');
                 }
             } else {
-                let obj = {type: 1, commentId};
-                let res = await request('/deleteVideoComment', {data: obj});
+                let obj = { type: 1, commentId };
+                let res = await request('/deleteVideoComment', { data: obj });
                 if (res.status == 200) {
                     let commentList = [...props.commentList];
                     commentList = commentList.filter(c => c.id !== commentId);
@@ -113,7 +113,7 @@ const CommentItem = React.memo(props => {
                 }
             }
         }
-        
+
     }
 
     const handleReply = () => {
@@ -135,7 +135,14 @@ const CommentItem = React.memo(props => {
             author={<span>{user && user.username}</span>}
             avatar={<AppAvatar userInfo={user} />}
             content={
-                <div>{item.content}</div>
+                <div className='content'>
+                    {
+                        <span>
+                            {item.replyUser ? (<span  style={{ marginRight: '7px' }}>@{item.replyUser}:</span>) : null}
+                            <span>{item.content}</span>
+                        </span>
+                    }
+                </div>
             }
             datetime={
                 <Tooltip title={item.createdAt}>
@@ -151,7 +158,7 @@ const CommentItem = React.memo(props => {
                         onKeyUp={handleKeyUp}
                     />
                     <div className='reply-form-controls'>
-                        <Button htmlType='submit' type='primary' disabled={!value.trim()} onClick={onSubmit}>
+                        <Button className='button' htmlType='submit' type='primary' disabled={!value.trim()} onClick={onSubmit}>
                             发布
                         </Button>
                     </div>

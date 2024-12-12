@@ -29,13 +29,6 @@
   }
 }
 
-canvas {
-  position: fixed;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-}
-
 html {
   /* cursor: url('../public/pointer.ico'), auto; */
 

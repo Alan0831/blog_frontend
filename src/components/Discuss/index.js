@@ -18,16 +18,12 @@ const { TextArea } = Input
 
 const Editor = ({ onChange, onSubmit, value }) => (
     <div>
-        <Form.Item>
-            <TextArea rows={4} placeholder='说点什么...' onChange={onChange} value={value} />
-        </Form.Item>
-        <Form.Item>
-            <div className='controls'>
-                <Button className='disscus-btn' htmlType='submit' onClick={onSubmit} type='primary'>
-                    发布
-                </Button>
-            </div>
-        </Form.Item>
+        <TextArea rows={4} placeholder='说点什么...' onChange={onChange} value={value} />
+        <div className='controls'>
+            <Button className='disscus-btn button' htmlType='submit' onClick={onSubmit} type='primary' disabled={!value.trim()}>
+                发布
+            </Button>
+        </div>
     </div>
 )
 
@@ -39,43 +35,47 @@ function Discuss(props) {
     const { username, userId } = userInfo;
     const { commentList, id, pageType } = props;
     const [value, setValue] = useState('');
-    const renderDropdownMenu = () =>  username ? {items: [
-        {
-            key: 'loginout',
-            label: '注销',
-        },
-    ]} :  {items: [
-        
-        {
-            key: 'login',
-            label: (
-                <div onClick={() => handleMenuClick('login')}>登录</div>
-            ),
-        },
-        {
-            key: 'register',
-            label: (
-                <div onClick={() => handleMenuClick('register')}>注册</div>
-            ),
-        },
-    ]};
+    const renderDropdownMenu = () => username ? {
+        items: [
+            {
+                key: 'loginout',
+                label: '注销',
+            },
+        ]
+    } : {
+        items: [
+
+            {
+                key: 'login',
+                label: (
+                    <div onClick={() => handleMenuClick('login')}>登录</div>
+                ),
+            },
+            {
+                key: 'register',
+                label: (
+                    <div onClick={() => handleMenuClick('register')}>注册</div>
+                ),
+            },
+        ]
+    };
 
     const handleMenuClick = (type) => {
         console.log(type)
         switch (type) {
-          case 'login':
-            bus.emit('openSignModal', 'login');
-            break
-          case 'register':
-            bus.emit('openSignModal', 'register');
-            break
-          case 'loginout':
-            dispatch(loginout());
-            break
-          default:
-            break
+            case 'login':
+                bus.emit('openSignModal', 'login');
+                break
+            case 'register':
+                bus.emit('openSignModal', 'register');
+                break
+            case 'loginout':
+                dispatch(loginout());
+                break
+            default:
+                break
         }
-      }
+    }
 
     const handleSubmit = async () => {
         if (!value) return
@@ -87,7 +87,7 @@ function Discuss(props) {
                 articleId: parseInt(id),
                 type: 1, // type:1 评论  2 回复
             }
-            let res = await request('/createComment', {data: obj});
+            let res = await request('/createComment', { data: obj });
             if (res.status == 200) {
                 message.success('发布评论成功！');
                 setValue('');
@@ -102,7 +102,7 @@ function Discuss(props) {
                 videoId: parseInt(id),
                 type: 1, // type:1 评论  2 回复
             }
-            let res = await request('/createVideoComment', {data: obj});
+            let res = await request('/createVideoComment', { data: obj });
             if (res.status == 200) {
                 message.success('发布评论成功！');
                 setValue('');
@@ -151,7 +151,7 @@ function Discuss(props) {
 }
 
 Discuss.propTypes = {
-  commentList: PropTypes.array.isRequired
+    commentList: PropTypes.array.isRequired
 }
 
 export default Discuss

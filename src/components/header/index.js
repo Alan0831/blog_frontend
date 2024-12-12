@@ -15,6 +15,7 @@ const xiaolu = require('../../../public/icon/xiaolu.svg');
 const xiaoxiong = require('../../../public/icon/xiaoxiong.svg');
 const shengdanmao = require('../../../public/icon/shengdanmao.svg');
 const shengdanwu = require('../../../public/icon/shengdanwu.svg');
+const headerHeight = 45;
 import './index.less'
 
 function Header() {
@@ -24,6 +25,7 @@ function Header() {
     const [notice, setNotice] = useState([]);
     const [headerVisible, setHeaderVisible] = useState(true);
     const headerRef = useRef(null);
+    const oldScroll = useRef(0);
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const location = useLocation();
@@ -141,8 +143,9 @@ function Header() {
     // 监听页面滚动时间
     const handleScroll = () => {
         const scrollPosition = window.scrollY;
-        const headerHeight = 45;
-        setHeaderVisible(scrollPosition < headerHeight);
+        let isVisible = scrollPosition < headerHeight || oldScroll.current > scrollPosition;
+        setHeaderVisible(isVisible);
+        oldScroll.current = scrollPosition; 
     };
 
     //  监听userInfo变化
@@ -168,7 +171,7 @@ function Header() {
 
     // 渲染标签svg+标题
     const renderHeaderPart = (img, title, cb) => (
-        <div onClick={cb} className='header_part'>
+        <div key={title} onClick={cb} className='header_part'>
             <img src={img}></img>
             <span>{title}</span>
         </div>

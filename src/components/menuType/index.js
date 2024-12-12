@@ -21,4 +21,4 @@ function MenuType(props) {
     )
 }
 
-export default MenuType
+export default React.memo(MenuType)
