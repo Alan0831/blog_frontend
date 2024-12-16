@@ -101,6 +101,7 @@ export default function Home() {
                 // setArticleTotal(res?.data.count);
                 articleTotal.current.total = res?.data.count;
                 articleTotal.current.pageNum = res?.data.pageNum;
+                setTotal(res?.data.count);
                 setPageNum(res?.data.pageNum);
                 setLoading(false);
             }
@@ -121,6 +122,7 @@ export default function Home() {
                 // setVideoTotal(res?.data.count);
                 videoTotal.current.total = res?.data.count;
                 videoTotal.current.pageNum = res?.data.pageNum;
+                setTotal(res?.data.count);
                 setPageNum(res?.data.pageNum);
                 setLoading(false);
             }

@@ -31,10 +31,10 @@ function VideoCard(props) {
     }
   }
 
-  // 解锁文章
+  // 解锁视频
   const unLockArticle = async () => {
     if (!password) {
-      message.info('请输入文章密码');
+      message.info('请输入视频密码');
       return;
     }
     let obj = {
@@ -84,7 +84,7 @@ function VideoCard(props) {
               </div>
               <div>
                 <CommentOutlined style={{ margin: '0 3px 0 7px' }} />
-                <span> {calcCommentsCount(videoInfo.comments)}</span>
+                <span> {calcCommentsCount(videoInfo.videocomments)}</span>
               </div>
               <div>
                 <StarOutlined style={{ margin: '0 3px 0 7px' }} />

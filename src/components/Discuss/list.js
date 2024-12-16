@@ -98,7 +98,7 @@ const CommentItem = React.memo(props => {
                 if (res.status == 200) {
                     let commentList = [...props.commentList];
                     let tagetComment = commentList.find(c => c.id === commentId);
-                    tagetComment.replies = tagetComment.replies.filter(r => r.id !== replyId);
+                    tagetComment.videoreplies = tagetComment.videoreplies.filter(r => r.id !== replyId);
                     props.setCommentList(commentList);
                     message.success('删除成功！');
                 }

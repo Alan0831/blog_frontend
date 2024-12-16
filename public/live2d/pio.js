@@ -168,7 +168,7 @@ var Paul_Pio = function (prop) {
           eval(prop.night);
         };
         elements.night.onmouseover = function () {
-          modules.render('夜间点击这里可以保护眼睛呢');
+          localStorage.getItem('isDark') == 'true' ? modules.render('克里斯开下灯') : modules.render('克里斯关下灯');
         };
         current.menu.appendChild(elements.night);
       }

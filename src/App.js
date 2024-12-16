@@ -25,7 +25,7 @@ function App() {
         }
       </Routes>
       <PublicComponent />
-      <canvas></canvas>
+      {/* <canvas></canvas> */}
     </div>
   );
 }

@@ -19,6 +19,10 @@ module.exports = merge(base, {
             return !source.includes('index.html') // 忽略index.html
           }
         },
+        {
+          from: path.resolve(__dirname, '../public/live2d'), // 复制live2d下文件
+          to: path.resolve(__dirname, '../dist/live2d'), // 复制到dist/live2d目录中
+        },
       ],
     }),
     new BundleAnalyzerPlugin(),
