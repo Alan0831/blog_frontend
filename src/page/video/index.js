@@ -115,7 +115,7 @@ function Video() {
         const myPlayer = videojs("#myVideo", {
             controls: true, //是否显示控制条
             poster: poster ? poster : '', // 视频封面图地址
-            muted: true, // 是否静音
+            muted: false, // 是否静音
             preload: 'auto', //预加载
             autoplay: false, //是否自动播放
             fluid: true, // 自适应宽高
@@ -136,15 +136,10 @@ function Video() {
             sources: [ // 视频源
                 {
                     src: videoUrl,
-                    // src: 'http://www.alanarmstrong.xyz/videoPath/e947225401a97c5cf5e5da8800ec7635.mp4/e947225401a97c5cf5e5da8800ec7635.mp4.m3u8',
+                    // src: 'http://www.alanarmstrong.xyz/videoPath/28e54aca6435b9af49a2f40c4c682ee9.mp4/28e54aca6435b9af49a2f40c4c682ee9.mp4.m3u8',
                     type: 'application/x-mpegURL',
                     poster: poster ? poster : '',
                 },
-                // {
-                //     src: 'https://commit-alan.oss-cn-beijing.aliyuncs.com/videos/file-1732636470699/file-1732636470699.m3u8',
-                //     type: 'application/x-mpegURL',
-                //     poster: poster ? poster : '',
-                // },
             ]
         }, function onPlayReady() {
             console.log('视频可以播放啦~~~');
@@ -161,7 +156,8 @@ function Video() {
                 console.log("获取资源长度完成 ")
             })
             this.on("canplaythrough", function () {
-                console.log("视频源数据加载完成")
+                console.log("视频源数据加载完成");
+
             })
             this.on("waiting", function () {
                 console.log("等待数据")
@@ -194,12 +190,17 @@ function Video() {
                 console.log("播放时长改变");
             })
             this.on("volumechange", function () {
-                console.log("音量改变");
+                var howLoudIsIt = myPlayer.volume();
+                console.log("音量改变" + howLoudIsIt);
+                localStorage.setItem("howLoudIsIt", howLoudIsIt);
             })
             this.on("stalled", function () {
                 console.log("网速异常");
             })
         });
+        // 设置缓存配置(音量)
+        let cacheLoudIsIt = localStorage.getItem('howLoudIsIt') || 0.5;
+        myPlayer.volume(cacheLoudIsIt);
         videoRef.current = myPlayer;
     }
 
@@ -230,7 +231,7 @@ function Video() {
                 <div className='post-content'>
                     <div className='article-detail'>
                         <div className='video_box'>
-                            <video id="myVideo" className="video-js vjs-default-skin"></video>
+                            <video id="myVideo" className="video-js vjs-default-skin "></video>
                         </div>
                         <div className='video-description'>
                             <p>视频简介：</p>

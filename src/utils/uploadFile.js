@@ -36,8 +36,9 @@ const calculateHash = (file) => {
  * @param {*} chunks 文件list[Blob]
  * @param {*} fileHash 文件hash
  * @param {*} existChunks 服务器已存在的包
+ * @param {*} progresscb 进行中的回调
  */
-const uploadChunks = async (chunks, fileHash, existChunks) => {
+const uploadChunks = async (chunks, fileHash, existChunks, progresscb) => {
     const formDatas = chunks
         .map((chunk, index) => ({
             fileHash,
@@ -62,11 +63,11 @@ const uploadChunks = async (chunks, fileHash, existChunks) => {
     );
 
     // 控制请求并发
-    await concurRequest(taskPool, 6);
+    await concurRequest(taskPool, 6, progresscb);
 };
 
 // 控制请求并发
-const concurRequest = (taskPool, max) => {
+const concurRequest = (taskPool, max, progresscb) => {
     return new Promise((resolve) => {
         if (taskPool.length === 0) {
             resolve([]);
@@ -91,7 +92,9 @@ const concurRequest = (taskPool, max) => {
                 if (count === taskPool.length) {
                     resolve(results);
                 }
-                console.log('请求')
+                console.log('请求');
+                let percent = (count / taskPool.length) * 100;
+                progresscb(percent);
                 request();
             }
         };
@@ -103,9 +106,9 @@ const concurRequest = (taskPool, max) => {
     });
 };
 
-const mergeRequest = async (fileHash, fileName) => {
+const mergeRequest = async (fileHash, fileName, userId) => {
     try {
-        let res = await request('/mergeChunks', { data: { fileHash, fileName } });
+        let res = await request('/mergeChunks', { data: { fileHash, fileName, userId } });
         return res;
     } catch (err) {
         console.error(err);
@@ -124,7 +127,16 @@ const verify = async (fileHash, fileName) => {
     }
 };
 
-export async function uploadFileChunk(file, cb, failcb) {
+/**
+ *  
+ * @param {*} file 文件名
+ * @param {*} userId 用户ID
+ * @param {*} cb 成功回调
+ * @param {*} failcb 失败回调
+ * @param {*} progresscb 进行中回调
+ * @returns 
+ */
+export async function uploadFileChunk(file, userId, cb, failcb, progresscb) {
     console.log(file);
     const fileName = file.name;
     // 创建文件分片
@@ -135,18 +147,20 @@ export async function uploadFileChunk(file, cb, failcb) {
     try {
         // 校验文件、文件分片是否存在
         const verifyRes = await verify(fileHash, fileName);
+        progresscb(1);
         console.log(verifyRes);
         const { existFile, existChunks, videoUrl = '' } = verifyRes.data;
         if (existFile) {
             message.success('上传成功');
+            progresscb(100);
             cb && cb(videoUrl);
             return
         };
         // 上传分片文件
-        await uploadChunks(chunks, fileHash, existChunks);
+        await uploadChunks(chunks, fileHash, existChunks, progresscb);
 
         // 合并分片文件
-        let mergeRes = await mergeRequest(fileHash, fileName);
+        let mergeRes = await mergeRequest(fileHash, fileName, userId);
         console.log(mergeRes);
         const { videoUrl: url } = mergeRes.data;
         if (url) {

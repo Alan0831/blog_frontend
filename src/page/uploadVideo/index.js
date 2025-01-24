@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import './index.less'
 import { request } from '../../utils/request';
-import { Button, Input, message, Upload } from 'antd'
+import { Button, Input, message, Upload, Progress } from 'antd'
 import { uploadFileChunk } from '../../utils/uploadFile';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -9,7 +9,6 @@ import { UploadOutlined, PlusOutlined } from '@ant-design/icons';
 import axios from 'axios';
 function WriteArticle(props) {
   const [isEdit, setISedit] = useState(false);
-  const [videoInfo, setVideoInfo] = useState({});
   const location = useLocation();
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
@@ -17,6 +16,7 @@ function WriteArticle(props) {
   const [content, setContent] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [percent, setPercent] = useState(0);
   const [file, setFile] = useState([]);
   const [fileImage, setFileImage] = useState([]);
 
@@ -134,9 +134,9 @@ function WriteArticle(props) {
     if (!isJpgOrPng) {
       message.error('仅支持mp4格式的视频哦!');
     }
-    const isLt2M = file.size / 1024 / 1024 < 100;
+    const isLt2M = file.size / 1024 / 1024 < 200;
     if (!isLt2M) {
-      message.error('仅支持100M以下的视频哦!');
+      message.error('仅支持200M以下的视频哦!');
     }
     return isJpgOrPng && isLt2M;
   };
@@ -154,7 +154,7 @@ function WriteArticle(props) {
 
   // 处理视频上传
   const uploadVideo = async (config) => {
-    uploadFileChunk(config.file, (url) => {
+    uploadFileChunk(config.file, userInfo.userId, (url) => {
       console.log(url);
       // 更新 fileList 以包含新上传的文件
       setFile(prevFileList => {
@@ -176,6 +176,8 @@ function WriteArticle(props) {
         }];
       });
       setVideoUrl('');
+    }, (percent) => {
+      setPercent(percent);
     });
   }
 
@@ -213,19 +215,22 @@ function WriteArticle(props) {
       />
       <div className='article_tags'>
         <span className='article_tags_title'>视频内容：</span>
-        <Upload
-          name="avatar"
-          accept='multipart/form-data'
-          className="avatar-uploader"
-          fileList={file}
-          maxCount={1}
-          listType='picture'
-          customRequest={uploadVideo}
-          beforeUpload={beforeUpload}
-          onChange={videohandleChange}
-        >
-          <Button icon={<UploadOutlined />}>上传视频</Button>
-        </Upload>
+        <div className='upload_progress'>
+          <Upload
+            name="avatar"
+            accept='multipart/form-data'
+            className="avatar-uploader"
+            fileList={file}
+            maxCount={1}
+            listType='picture'
+            customRequest={uploadVideo}
+            beforeUpload={beforeUpload}
+            onChange={videohandleChange}
+          >
+            <Button icon={<UploadOutlined />}>上传视频</Button>
+          </Upload>
+          {percent !== 0 && <Progress percent={percent} />}
+        </div>
       </div>
       <div className='article_tags'>
         <span className='article_tags_title'>视频封面：</span>
