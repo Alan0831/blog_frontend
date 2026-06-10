@@ -1,17 +1,36 @@
 .help {
-    padding: 64px 32px;
-    .back {
-        margin-top: 20px;
-        text-align: center;
+  padding: 64px 32px;
+
+  .back {
+    margin-top: 20px;
+    text-align: center;
+  }
+
+  .back-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 0 14px;
+    border: none;
+    border-radius: var(--radius-md);
+    color: #fff;
+    background-color: var(--color-accent);
+    text-align: center;
+    text-decoration: none;
+    transition:
+      transform 220ms var(--ease-smooth),
+      background-color 260ms var(--ease-smooth),
+      box-shadow 260ms var(--ease-smooth);
+
+    &:hover {
+      background-color: var(--color-accent-strong);
+      box-shadow: var(--shadow-control);
+      transform: translate3d(0, -1px, 0);
     }
 
-    .back-btn {
-        display: inline-block;
-        border: none;
-        background-color: #333;
-        color: #fff;
-        text-align: center;
-        text-decoration: none;
-        border-radius: 20px;
+    &:active {
+      transform: scale(0.98);
     }
+  }
 }

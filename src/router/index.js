@@ -22,6 +22,11 @@ const routers = [
         components: lazy(() => import('../page/article/index'))    // 引入pages文件下的页面
     },
     {
+        path: '/code/:id',
+        name: '题目详情',
+        components: lazy(() => import('../page/code/index'))    // 引入pages文件下的页面
+    },
+    {
         path: '/help',
         name: '帮助中心',
         components: lazy(() => import('../page/help/index'))    // 引入pages文件下的页面

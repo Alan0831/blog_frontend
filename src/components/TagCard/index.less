@@ -1,15 +1,27 @@
 .tagContent {
-    display: flex;
-    flex-wrap: wrap;
-    .tagChildren {
-        color: #fff;
-        max-width: 100%;
-        padding: 3px 7px;
-        margin: 3px 5px;
+  display: flex;
+  flex-wrap: wrap;
+
+  .tagChildren {
+    max-width: 100%;
+    margin: 3px 5px;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    color: #fff;
+    transition:
+      transform 220ms var(--ease-smooth),
+      background-color 260ms var(--ease-smooth),
+      box-shadow 260ms var(--ease-smooth);
+
+    &:hover {
+      background-color: var(--color-accent) !important;
+      box-shadow: var(--shadow-control);
+      cursor: pointer;
+      transform: translate3d(0, -1px, 0);
     }
-    .tagChildren:hover {
-        background-color: #e0730d !important;
-        cursor: pointer;
-        transition: all 1s ease;
+
+    &:active {
+      transform: scale(0.98);
     }
+  }
 }

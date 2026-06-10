@@ -6,10 +6,11 @@ import MyArticle from '../../components/MyArticle';
 import MyVideo from '../../components/MyVideo';
 import MyInfo from '../../components/MyInfo';
 import Notice from '../../components/Notice';
+import ManagePage from '../../components/ManagePage';
 import ChangePassword from '../../components/changePassword';
 import Collection from '../../components/Collection';
 import { useSelector } from 'react-redux';
-import { FileTextOutlined, IdcardOutlined, KeyOutlined, NotificationOutlined, PaperClipOutlined, ExclamationCircleOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import { FileTextOutlined, IdcardOutlined, KeyOutlined, NotificationOutlined, PaperClipOutlined, ExclamationCircleOutlined, VideoCameraOutlined, CrownOutlined } from '@ant-design/icons';
 import { useLocation } from 'react-router-dom';
 /**
  * 帮助中心
@@ -69,11 +70,17 @@ function Help() {
         },
     ]
 
+    const managerItems = [...items, {
+        label: (<div><CrownOutlined />管理端</div>),
+        key: '7',
+        children: <ManagePage userInfo={userInfo}></ManagePage>,
+    }]
+
     return (
         <div className='help'>
             <Tabs
                 tabPosition='left'
-                items={items}
+                items={userInfo.userId === 1 ? managerItems : items}
                 activeKey={active}
                 onChange={(active) => setActive(active)}
             />

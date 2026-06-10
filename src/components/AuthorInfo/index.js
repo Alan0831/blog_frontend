@@ -10,7 +10,7 @@ function AuthorInfo(props) {
     const { description = '', email = '', username = '' } = props.authorInfo;
 
     return (
-        <Card style={{ margin: '16px auto' }} className='au-card'>
+        <Card className='sidebar-card au-card'>
             <div>
                 <div className='au-avatar'><Avatar src={DISCUSS_AVATAR}>{username}</Avatar></div>
                 <div style={{marginTop: '10px'}}><UserOutlined /><span className='au-text'>{`作者: ${username}`}</span></div>

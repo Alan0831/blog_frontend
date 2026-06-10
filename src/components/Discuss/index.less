@@ -1,15 +1,15 @@
 #discuss {
-  font-family: "阿里妈妈方圆体 VF Regular";
+  font-family: var(--font-sans);
 
   .discuss-header {
     padding: 20px;
-    color: #555;
+    color: var(--color-muted);
     font-size: 16px;
 
     .discuss-count {
-      color: #6190e8;
-      border-bottom: 1px dotted #6190e8;
       margin-right: 5px;
+      border-bottom: 1px dotted var(--color-accent);
+      color: var(--color-accent);
     }
 
     .hr {
@@ -18,7 +18,7 @@
 
     .discuss-user {
       display: flex;
-      justify-content: end;
+      justify-content: flex-end;
       cursor: pointer;
     }
   }
@@ -27,14 +27,17 @@
     float: right;
     margin-top: 20px;
 
+    .controls-tip-icon,
+    .controls-tip {
+      color: var(--color-accent);
+    }
+
     .controls-tip-icon {
-      color: #6190e8;
       margin-right: 4px;
     }
 
     .controls-tip {
       margin-right: 20px;
-      color: #6190e8;
     }
   }
 
@@ -46,18 +49,19 @@
       padding: 10px 0;
 
       .tip {
-        color: #c2c2c2;
         margin-right: 8px;
+        color: var(--color-muted);
         font-size: 13px;
       }
     }
   }
 
   .content {
-    border-radius: 8px;
-    background-color: rgb(247, 249, 254);
-    padding: 8px 16px 8px 16px;
-    font-family: "阿里妈妈方圆体 VF Regular";
+    padding: 8px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: rgba(255, 255, 255, 0.7);
+    font-family: var(--font-sans);
   }
 
   .ant-comment-content:hover {
@@ -66,12 +70,7 @@
     }
   }
 
-  .ant-popover-open {
-    .icon-delete {
-      display: inline-block;
-    }
-  }
-
+  .ant-popover-open .icon-delete,
   .icon-delete.active {
     display: inline-block;
   }
@@ -85,30 +84,44 @@
   }
 
   .ant-comment-content-detail p {
-    white-space: inherit;
     margin-bottom: 0;
+    white-space: inherit;
   }
 
   .ant-comment-content-author-name {
     span {
-      color: #e0730d;
+      color: var(--color-accent);
     }
   }
 }
 
 .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
   margin-left: 16px;
-  display: inline-block;
+  padding: 0 14px;
   border: none;
-  background-color: #333;
+  border-radius: var(--radius-md);
   color: #fff;
+  background-color: var(--color-accent);
   text-align: center;
   text-decoration: none;
-  border-radius: 20px;
+  transition:
+    transform 220ms var(--ease-smooth),
+    background-color 260ms var(--ease-smooth),
+    box-shadow 260ms var(--ease-smooth);
 }
 
 .button:hover {
-  animation: jelly 0.5s;
+  background-color: var(--color-accent-strong);
+  box-shadow: var(--shadow-control);
+  transform: translate3d(0, -1px, 0);
+}
+
+.button:active {
+  transform: scale(0.98);
 }
 
 @media screen and (max-width: 736px) {

@@ -16,7 +16,7 @@ function TagCard(props) {
     }, [])
 
     return (
-        <Card style={{ margin: '16px auto' }}>
+        <Card className='sidebar-card tag-card'>
             <div className='re-card'>
                 <div className='re-title'>
                     <span>热门标签</span>

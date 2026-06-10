@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>包版本号前缀符号解释器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        header {
+            background: #4a6bdf;
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .symbol-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .symbol-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+        }
+        
+        .symbol-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .symbol {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #4a6bdf;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .symbol-desc {
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .examples {
+            background: #eef1f8;
+            padding: 25px;
+            border-radius: 10px;
+        }
+        
+        h2 {
+            color: #4a6bdf;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #d6e0ff;
+        }
+        
+        h3 {
+            color: #4a6bdf;
+            margin: 20px 0 15px;
+        }
+        
+        .example-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .version {
+            font-family: monospace;
+            font-weight: bold;
+            color: #e63946;
+            margin-right: 10px;
+        }
+        
+        .meaning {
+            color: #555;
+        }
+        
+        .practice {
+            margin-top: 30px;
+            background: #eef1f8;
+            padding: 25px;
+            border-radius: 10px;
+        }
+        
+        .input-group {
+            display: flex;
+            margin: 15px 0;
+        }
+        
+        input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid #d6e0ff;
+            border-radius: 6px 0 0 6px;
+            font-size: 1rem;
+        }
+        
+        button {
+            background: #4a6bdf;
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 0 6px 6px 0;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #3a5bce;
+        }
+        
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            display: none;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .symbol-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .input-group {
+                flex-direction: column;
+            }
+            
+            input {
+                border-radius: 6px;
+                margin-bottom: 10px;
+            }
+            
+            button {
+                border-radius: 6px;
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>包版本号前缀符号解释器</h1>
+            <p class="subtitle">理解package.json中版本控制符号的含义</p>
+        </header>
+        
+        <div class="content">
+            <div class="symbol-grid">
+                <div class="symbol-card">
+                    <div class="symbol">~</div>
+                    <div class="symbol-desc">
+                        <p><strong>波浪符号</strong>允许更新到最新的补丁版本（最后一位数字）。</p>
+                        <p>例如：<code>~1.2.3</code> 允许安装从 <code>1.2.3</code> 到 <code>1.2.9</code> 的版本，但不包括 <code>1.3.0</code>。</p>
+                    </div>
+                </div>
+                
+                <div class="symbol-card">
+                    <div class="symbol">^</div>
+                    <div class="symbol-desc">
+                        <p><strong>插入符号</strong>允许更新到最新的次版本（中间数字）。</p>
+                        <p>例如：<code>^1.2.3</code> 允许安装从 <code>1.2.3</code> 到 <code>1.9.9</code> 的版本，但不包括 <code>2.0.0</code>。</p>
+                    </div>
+                </div>
+                
+                <div class="symbol-card">
+                    <div class="symbol">无符号</div>
+                    <div class="symbol-desc">
+                        <p><strong>精确版本</strong>只安装指定的确切版本。</p>
+                        <p>例如：<code>1.2.3</code> 只会安装版本 <code>1.2.3</code>，不会安装任何其他版本。</p>
+                    </div>
+                </div>
+                
+                <div class="symbol-card">
+                    <div class="symbol">></div>
+                    <div class="symbol-desc">
+                        <p><strong>大于号</strong>允许安装比指定版本新的任何版本。</p>
+                        <p>例如：<code>>1.2.3</code> 允许安装任何比 <code>1.2.3</code> 更新的版本。</p>
+                    </div>
+                </div>
+                
+                <div class="symbol-card">
+                    <div class="symbol">*</div>
+                    <div class="symbol-desc">
+                        <p><strong>星号</strong>允许安装任何版本。</p>
+                        <p>例如：<code>*</code> 或空版本将匹配任何版本。通常不推荐在生产环境中使用。</p>
+                    </div>
+                </div>
+                
+                <div class="symbol-card">
+                    <div class="symbol">-</div>
+                    <div class="symbol-desc">
+                        <p><strong>连字符</strong>指定一个版本范围。</p>
+                        <p>例如：<code>1.2.3 - 2.3.4</code> 允许安装从 <code>1.2.3</code> 到 <code>2.3.4</code> 之间的所有版本。</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="examples">
+                <h2>版本控制示例</h2>
+                
+                <div class="example-item">
+                    <span class="version">~1.2.3</span>
+                    <span class="meaning">允许从 1.2.3 到 1.3.0 之前的版本（即 1.2.x）</span>
+                </div>
+                
+                <div class="example-item">
+                    <span class="version">^1.2.3</span>
+                    <span class="meaning">允许从 1.2.3 到 2.0.0 之前的版本（即 1.x.x）</span>
+                </div>
+                
+                <div class="example-item">
+                    <span class="version">1.2.x</span>
+                    <span class="meaning">允许任何 1.2.x 版本，相当于 ~1.2.0</span>
+                </div>
+                
+                <div class="example-item">
+                    <span class="version">>1.2.3</span>
+                    <span class="meaning">允许任何大于 1.2.3 的版本</span>
+                </div>
+                
+                <div class="example-item">
+                    <span class="version"><=2.3.4</span>
+                    <span class="meaning">允许任何小于或等于 2.3.4 的版本</span>
+                </div>
+                
+                <div class="example-item">
+                    <span class="version">1.2.3 - 2.3.4</span>
+                    <span class="meaning">允许从 1.2.3 到 2.3.4 之间的所有版本</span>
+                </div>
+            </div>
+            
+            <div class="practice">
+                <h2>试试看</h2>
+                <p>输入一个版本范围，查看它可以安装哪些版本：</p>
+                
+                <div class="input-group">
+                    <input type="text" id="versionInput" placeholder="例如: ^1.2.3">
+                    <button id="checkBtn">检查</button>
+                </div>
+                
+                <div id="result">
+                    <h3>解释：</h3>
+                    <p id="explanation"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>设计用于帮助理解 npm package.json 中的版本控制符号 | 2023</p>
+    </footer>
+
+    <script>
+        document.getElementById('checkBtn').addEventListener('click', function() {
+            const input = document.getElementById('versionInput').value.trim();
+            const resultDiv = document.getElementById('result');
+            const explanation = document.getElementById('explanation');
+            
+            if (!input) {
+                explanation.textContent = '请输入一个版本范围';
+                resultDiv.style.display = 'block';
+                return;
+            }
+            
+            let explanationText = '';
+            
+            if (input.startsWith('~')) {
+                const baseVersion = input.substring(1);
+                explanationText = `波浪符号(~)允许安装从 ${baseVersion} 到下一个次要版本之前的所有补丁版本。例如：${input} 允许安装从 ${baseVersion} 到相同次要版本的最终补丁版本。`;
+            } else if (input.startsWith('^')) {
+                const baseVersion = input.substring(1);
+                explanationText = `插入符号(^)允许安装从 ${baseVersion} 到下一个主要版本之前的所有版本。例如：${input} 允许安装从 ${baseVersion} 到相同主要版本的最终次要版本。`;
+            } else if (input === '*') {
+                explanationText = `星号(*)允许安装任何版本。这通常不推荐在生产环境中使用，因为它可能会导致不兼容的更新。`;
+            } else if (input.includes('-')) {
+                const versions = input.split('-');
+                explanationText = `连字符(-)指定一个版本范围。${input} 允许安装从 ${versions[0].trim()} 到 ${versions[1].trim()} 之间的所有版本。`;
+            } else if (input.includes('>') || input.includes('<')) {
+                if (input.includes('>=')) {
+                    const version = input.substring(2);
+                    explanationText = `大于等于(>=)允许安装 ${version} 及更高版本。`;
+                } else if (input.includes('<=')) {
+                    const version = input.substring(2);
+                    explanationText = `小于等于(<=)允许安装 ${version} 及更低版本。`;
+                } else if (input.startsWith('>')) {
+                    const version = input.substring(1);
+                    explanationText = `大于(>)允许安装比 ${version} 新的任何版本。`;
+                } else if (input.startsWith('<')) {
+                    const version = input.substring(1);
+                    explanationText = `小于(<)允许安装比 ${version} 旧的所有版本。`;
+                }
+            } else if (input.includes('x') || input.includes('X')) {
+                explanationText = `'x' 用作通配符，可以匹配任何数字。${input} 允许安装匹配该模式的所有版本。`;
+            } else {
+                explanationText = `没有前缀符号表示精确版本。只会安装版本 ${input}，不会安装任何其他版本。`;
+            }
+            
+            explanation.textContent = explanationText;
+            resultDiv.style.display = 'block';
+        });
+    </script>
+</body>
+</html>

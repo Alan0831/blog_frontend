@@ -1,23 +1,40 @@
 .menuType {
-    text-align: center;
-    width: 90%;
-    margin: 16px auto;
-    font-family: "阿里妈妈方圆体 VF Regular";
-    .menu-type-card-content {
-        border: 1px solid;
-        border-radius: 12px;
-        display: flex;
-        flex-direction: column;
-        padding: 16px;
-        margin-top: 24px;
-        color: #fff;
-        cursor: pointer;
-        .menu-type-card-content-title {
-            text-align: left;
-        }
-        .menu-type-card-content-description {
-            text-align: left;
-            font-size: 13px;
-        }
+  width: 90%;
+  margin: 16px auto;
+  font-family: var(--font-sans);
+  text-align: center;
+
+  .menu-type-card-content {
+    display: flex;
+    flex-direction: column;
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: var(--radius-md);
+    color: #fff;
+    cursor: pointer;
+    transition:
+      transform 260ms var(--ease-smooth),
+      border-color 260ms var(--ease-smooth),
+      background-color 260ms var(--ease-smooth);
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.78);
+      background-color: rgba(255, 255, 255, 0.08);
+      transform: translate3d(0, -2px, 0);
     }
+
+    &:active {
+      transform: scale(0.99);
+    }
+
+    .menu-type-card-content-title {
+      text-align: left;
+    }
+
+    .menu-type-card-content-description {
+      font-size: 13px;
+      text-align: left;
+    }
+  }
 }

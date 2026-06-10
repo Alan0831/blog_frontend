@@ -64,7 +64,7 @@ function Recommend(props) {
     }
 
     return (
-        <Card style={{ margin: '16px auto' }}>
+        <Card className='sidebar-card recommend-card'>
             <div className='re-card'>
                 <div className='re-title'>{type === 1 ? '热门文章' : type === 2 ? '猜你喜欢' : '热门视频'}
                     <span style={{ marginLeft: '7px' }}>

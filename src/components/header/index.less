@@ -1,76 +1,132 @@
 .header {
-    height: 45px;
-    width: 100%;
-    line-height: 45px;
-    z-index: 999;
+  position: fixed;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 45px;
+  padding: 0 5%;
+  border-bottom: 1px solid rgba(72, 91, 108, 0.12);
+  background: rgba(247, 249, 251, 0.82);
+  box-shadow: 0 12px 30px -26px rgba(20, 36, 48, 0.52);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  transition:
+    opacity 320ms var(--ease-smooth),
+    transform 320ms var(--ease-smooth),
+    background-color 320ms var(--ease-smooth),
+    box-shadow 320ms var(--ease-smooth);
+
+  &.dark,
+  .dark & {
+    border-bottom-color: rgba(223, 234, 239, 0.12);
+    background: rgba(17, 24, 32, 0.78);
+    box-shadow: 0 12px 30px -26px rgba(0, 0, 0, 0.9);
+  }
+
+  .header_left,
+  .header_right,
+  .header_left_left {
     display: flex;
+    align-items: center;
     flex-direction: row;
-    justify-content: space-between;
-    background-color: aliceblue;
-    position: fixed;
-    transition: opacity 0.5s ease ;
-    top: 0;
-    .header_left {
-        color: black;
-        margin-left: 5%;
-        display: flex;
-        align-items: center;
-        flex-direction: row;
-        font-family: "阿里妈妈方圆体 VF Regular";
-        .header_left_left {
-          display: flex;
-          flex-direction: row;
-        }
+  }
+
+  .header_left,
+  .header_right {
+    min-width: 0;
+    font-family: var(--font-sans);
+  }
+
+  .header_part {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 34px;
+    margin-left: 10px;
+    padding: 0 9px;
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    cursor: pointer;
+    transition:
+      transform 220ms var(--ease-smooth),
+      color 260ms var(--ease-smooth),
+      background-color 260ms var(--ease-smooth);
+
+    img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      transform: translateZ(0);
+      transition: transform 260ms var(--ease-smooth);
     }
-    .header_right {
-        margin-right: 5%;
-        display: flex;
-        align-items: center;
-        font-family: "阿里妈妈方圆体 VF Regular";
+
+    span {
+      margin-left: 0;
+      font-size: 15px;
+      font-weight: 650;
+      line-height: 1;
+      white-space: nowrap;
     }
-    .header_part {
-      cursor: pointer;
-      transition: color 0.5s ease;
-      font-family: 'Arial', sansserif;
-      margin-left: 15px;
+
+    &:hover {
+      color: var(--color-accent);
+      background: rgba(38, 122, 143, 0.09);
+      transform: translate3d(0, -1px, 0);
+
       img {
-        width: 25px;
-        margin-top: -6px;
+        transform: translate3d(0, -1px, 0) scale(1.06);
       }
+    }
+
+    &:active {
+      transform: translate3d(0, 0, 0) scale(0.98);
+    }
+  }
+
+  .button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    margin-left: 16px;
+    padding: 0 14px;
+    border: none;
+    border-radius: var(--radius-md);
+    color: #fff;
+    background: var(--color-accent);
+    text-align: center;
+    text-decoration: none;
+    transition:
+      transform 220ms var(--ease-smooth),
+      background-color 260ms var(--ease-smooth),
+      box-shadow 260ms var(--ease-smooth);
+
+    &:hover {
+      background: var(--color-accent-strong);
+      box-shadow: var(--shadow-control);
+      transform: translate3d(0, -1px, 0);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 0 12px;
+
+    .header_part {
+      margin-left: 4px;
+      padding: 0 7px;
+
       span {
-        font-size: 17px;
-        margin-left: 5px;
+        font-size: 14px;
       }
     }
-    .header_part:hover {
-      color: #18c0ff;
-    }
-    .button {
-        margin-left: 16px;
-        display: inline-block;
-        border: none;
-        background-color: #333;
-        color: #fff;
-        text-align: center;
-        text-decoration: none;
-        border-radius: 20px;
-    }
-    .button:hover {
-        animation: jelly 0.5s;
-    }
-      @keyframes jelly {
-        0%,
-        100% {
-          transform: scale(1, 1);
-        }
-        25% {
-          transform: scale(0.9, 1.1);
-        }
-        50% {
-          transform: scale(1.1, 0.9);
-        }
-        75% {
-          transform: scale(0.95, 1.05);
-        }
-      }
+  }
 }

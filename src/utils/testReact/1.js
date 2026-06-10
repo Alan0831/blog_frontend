@@ -43,3 +43,10 @@ queue.enqueueUpdate(new Update((state)=>({number:state.number+1})));
 queue.forceUpdate();
 
 console.log(queue.baseState)
+
+
+
+
+
+
+

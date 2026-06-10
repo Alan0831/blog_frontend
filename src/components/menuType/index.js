@@ -3,6 +3,7 @@ import './index.less';
 const menuType = [
     {title: '文章', description: '文章笔记，记录生活', color: '#18c0ff', menuType: 1},
     {title: '视频', description: '视频分享，感受自我', color: '#ff6b36', menuType: 2},
+    {title: '代码', description: '挑战算法，更上一层', color: '#1fe236', menuType: 3},
 ]
 /**
  * 菜单类型

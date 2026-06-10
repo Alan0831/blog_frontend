@@ -1,58 +1,45 @@
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.App {
+  min-height: 100dvh;
+  color: var(--color-text);
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+.App > div:not(.header) {
+  animation: page-enter 460ms var(--ease-smooth) both;
 }
 
-.App-link {
-  color: #61dafb;
+html::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
 }
 
-@keyframes App-logo-spin {
+html::-webkit-scrollbar-track {
+  background: var(--color-canvas-soft);
+}
+
+html::-webkit-scrollbar-thumb {
+  border: 2px solid var(--color-canvas-soft);
+  border-radius: 999px;
+  background: rgba(38, 122, 143, 0.5);
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: rgba(38, 122, 143, 0.72);
+}
+
+@keyframes page-enter {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
   }
 
   to {
-    transform: rotate(360deg);
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
   }
 }
 
-html {
-  /* cursor: url('../public/pointer.ico'), auto; */
-
-  /*
-    设置滚动条样式
-  */
-  /* 自定义滚动条轨道 */
-
-  ::-webkit-scrollbar {
-    width: 7px;
-    height: 7px;
-  }
-
-  ::-webkit-scrollbar-track {
-    background-color: #49b1f5;
-  }
-
-  /* 自定义滚动条的滑块 */
-  ::-webkit-scrollbar-thumb {
-    background-color: #dbeffd;
-  }
-
-  /* 当滑块悬停或活动时，改变滑块的背景色 */
-  ::-webkit-scrollbar-thumb:hover {
-    background-color: #555;
+@media (prefers-reduced-motion: reduce) {
+  .App > div:not(.header) {
+    animation: none;
   }
 }

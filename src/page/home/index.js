@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { message, Input, Pagination, Spin, Button } from 'antd';
+import { message, Input, Pagination, Spin, Empty, Button } from 'antd';
 import ArticleCard from '../../components/ArticleCard';
 import VideoCard from '../../components/VideoCard';
+import CodeCard from '../../components/CodeCard';
 import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 import './index.less'
@@ -16,24 +17,28 @@ const socket = location.origin.includes('localhost') ? new WebSocket('ws://127.0
 export default function Home() {
     const [listData, setData] = useState([]);
     const [videoListData, setVideoListData] = useState([]);
+    const [codeListData, setCodeListData] = useState([]);
     const [loading, setLoading] = useState(false);
     const [recommendListData, setRecommendList] = useState([]);
     const [pageNum, setPageNum] = useState(1);
     const [total, setTotal] = useState(0);
     const [tagList, setTagList] = useState([]);
     const [keyword, setKeyword] = useState('');
+    const [searchedKeywords, setSearchedKeywords] = useState({});
     const [menuType, setMenuType] = useState(1);
     const userInfo = useSelector(state => state.user);
     const articleTotal = useRef({});
     const videoTotal = useRef({});
+    const codeTotal = useRef({});
     const articleRecommend = useRef({});
     const videoRecommend = useRef({});
+    const codeRecommend = useRef({});
     const bus = useBus();
 
     useEffect(() => {
         initSocket();
 
-        Promise.allSettled([getRecommendArticleList(), getRecommendVideoList(), getArticleList(), getVideoList(), getTagList()])
+        Promise.allSettled([getRecommendArticleList(), getRecommendVideoList(), getArticleList(), getVideoList(), getCodeTopicList(), getTagList()])
                 .then(() => {
                     console.log('加载数据完成');
                     let lastUseMenuType = localStorage.getItem('lastUseMenuType');
@@ -42,9 +47,12 @@ export default function Home() {
                         if (lastUseMenuType == 1) {
                             setTotal(articleTotal.current.total);
                             setRecommendList(articleRecommend.current);
-                        } else {
+                        } else if (lastUseMenuType == 2) {
                             setTotal(videoTotal.current.total);
                             setRecommendList(videoRecommend.current);
+                        } else {
+                            setTotal(codeTotal.current.total);
+                            setRecommendList(codeRecommend.current);
                         }
                         setPageNum(1);
                         setMenuType(lastUseMenuType);
@@ -111,6 +119,26 @@ export default function Home() {
         }
     }
 
+    //  获取代码题目列表
+    const getCodeTopicList = async (pageNum = 1, pageSize = 10, keyword = '') => {
+        let obj = { pageNum, pageSize, keyword };
+        setLoading(true);
+        try {
+            const res = await request('/getCodeTopicList', { data: obj });
+            if (res?.data.rows) {
+                setCodeListData([...res?.data.rows]);
+                codeTotal.current.total = res?.data.count;
+                codeTotal.current.pageNum = res?.data.pageNum;
+                setTotal(res?.data.count);
+                setPageNum(res?.data.pageNum);
+                setLoading(false);
+            }
+        } catch (err) {
+            setLoading(false);
+            console.error(err);
+        }
+    }
+
     // 获取视频列表
     const getVideoList = async (pageNum = 1, pageSize = 10, keyword = '') => {
         let obj = { pageNum, pageSize, keyword };
@@ -164,10 +192,14 @@ export default function Home() {
             setTotal(articleTotal.current.total);
             setPageNum(articleTotal.current.pageNum);
             setRecommendList(articleRecommend.current);
-        } else {
+        } else if (type == 2) {
             setTotal(videoTotal.current.total);
             setPageNum(videoTotal.current.pageNum);
             setRecommendList(videoRecommend.current);
+        } else {
+            setTotal(codeTotal.current.total);
+            setPageNum(codeTotal.current.pageNum);
+            setRecommendList(codeRecommend.current);
         }
         setMenuType(type);
         localStorage.setItem('lastUseMenuType', type);
@@ -177,8 +209,10 @@ export default function Home() {
     const changePage = (page) => {
         if (menuType == 1) {
             getArticleList(page, 10, keyword);
-        } else {
+        } else if (menuType == 2) {
             getVideoList(page, 10, keyword);
+        } else {
+            getCodeTopicList(page, 10, keyword);
         }
         window.scrollTo({
             top: 0,
@@ -188,16 +222,52 @@ export default function Home() {
     }
 
     const handlePressEnter = () => {
+        const nextKeyword = keyword.trim();
+        setSearchedKeywords(prev => ({ ...prev, [menuType]: nextKeyword }));
         if (menuType == 1) {
-            getArticleList(1, 10, keyword);
+            getArticleList(1, 10, nextKeyword);
+        } else if (menuType == 2) {
+            getVideoList(1, 10, nextKeyword);
         } else {
-            getVideoList(1, 10, keyword);
+            getCodeTopicList(1, 10, nextKeyword);
         }
         window.scrollTo({
             top: 0,
             left: 0,
             behavior: 'smooth'
         });
+    }
+
+    const getSearchPlaceholder = () => {
+        if (menuType == 1) return '搜索文章';
+        if (menuType == 2) return '搜索视频';
+        return '搜索代码';
+    }
+
+    const renderHomeList = () => {
+        const currentList = menuType == 1 ? listData : menuType == 2 ? videoListData : codeListData;
+        const activeSearchedKeyword = searchedKeywords[menuType] || '';
+
+        if (!loading && activeSearchedKeyword && currentList.length === 0) {
+            return (
+                <div className='home_empty_state'>
+                    <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description={<span>没有搜索到“{activeSearchedKeyword}”对应内容</span>}
+                    />
+                </div>
+            )
+        }
+
+        if (menuType == 1) {
+            return listData.map((item) => <ArticleCard articleInfo={item} userInfo={userInfo} key={item.id} />);
+        }
+
+        if (menuType == 2) {
+            return videoListData.map((item) => <VideoCard videoInfo={item} userInfo={userInfo} key={item.id} />);
+        }
+
+        return codeListData.map((item) => <CodeCard codeInfo={item} userInfo={userInfo} key={item.id} />);
     }
 
     return (
@@ -220,7 +290,7 @@ export default function Home() {
                             <AlanCard articleTotal={articleTotal.current.total} videoTotal={videoTotal.current.total}></AlanCard>
                             <div className='home_search'>
                                 <Input
-                                    placeholder={menuType == 1 ? '搜索文章' : '搜索视频'}
+                                    placeholder={getSearchPlaceholder()}
                                     onChange={(e) => setKeyword(e.target.value)}
                                     value={keyword}
                                     onPressEnter={handlePressEnter}
@@ -232,20 +302,20 @@ export default function Home() {
                         </div>
                         <div className='home_middle_content'>
                             <div className='home_list'>
-                                {
-                                    menuType == 1 ?
-                                        <div>{listData.map((item) => <ArticleCard articleInfo={item} userInfo={userInfo} key={item.id} />)}</div> :
-                                        <div>{videoListData.map((item) => <VideoCard videoInfo={item} userInfo={userInfo} key={item.id} />)}</div>
-                                }
+                                {renderHomeList()}
                             </div>
                             <div className='home_pagination'>
                                 {total > 10 ? <Pagination current={pageNum} total={total} onChange={changePage} pageSize={10} /> : null}
                             </div>
                         </div>
-                        <div className='home_right_content'>
-                            <Recommend type={menuType == 1 ? 1 : 3} articleList={recommendListData}></Recommend>
-                            <TagCard tagList={tagList}></TagCard>
-                        </div>
+                        {
+                            menuType !== 3 ?  (
+                                <div className='home_right_content'>
+                                    <Recommend type={menuType == 1 ? 1 : 3} articleList={recommendListData}></Recommend>
+                                    <TagCard tagList={tagList}></TagCard>
+                                </div>
+                            ) : null
+                        }
                     </div>
                 </div>
             </div>

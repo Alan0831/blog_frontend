@@ -47,6 +47,30 @@
                 .ant-list-item {
                     width: 100%;
                 }
+
+                .home_empty_state {
+                    min-height: 360px;
+                    margin: 16px 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 1px solid var(--color-border);
+                    border-radius: var(--radius-md);
+                    background: var(--color-surface);
+                    box-shadow: var(--shadow-soft);
+                    backdrop-filter: blur(10px);
+                    -webkit-backdrop-filter: blur(10px);
+
+                    .ant-empty {
+                        color: var(--color-muted);
+                    }
+
+                    .ant-empty-description {
+                        color: var(--color-text);
+                        font-size: 15px;
+                        font-weight: 700;
+                    }
+                }
             }
 
             .home_pagination {

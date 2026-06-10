@@ -35,7 +35,7 @@ function AlanCard(props) {
     }
 
     return (
-        <Card style={{ margin: '16px auto', cursor: 'default' }}>
+        <Card className='sidebar-card alan-shell-card' style={{ cursor: 'default' }}>
             <div className='alan-card'>
                 <div className='alan-title'>
                     <AppAvatar style={{width: '70px', height: '70px'}} image={ALAN_AVATAR} popoverVisible={false} />

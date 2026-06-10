@@ -1,13 +1,13 @@
 import React, { Suspense } from 'react';
 import ReactDOM from 'react-dom/client';
+import 'antd/dist/antd.min.css';
+import './assets/font/font.less'
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter } from 'react-router-dom';
 import { Provider as BusProvider } from './hooks/useBus'
 // import { Spin } from 'antd';
-import 'antd/dist/antd.min.css';
-import './assets/font/font.less'
 // redux
 import { Provider } from 'react-redux'
 import store from './redux'
