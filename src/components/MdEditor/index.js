@@ -233,15 +233,16 @@ function MdEditor(props) {
 
     const { userId: authorId } = userInfo;
     const isEdit = props.isEdit;
+    const originalArticleCover = props.articleInfo?.articleCover || '';
     const payload = {
       title: title.trim(),
       content,
       authorId,
       tagList: selectedTags,
       visibleType,
-      articleCover: imageUrl,
     };
 
+    if (!isEdit || imageUrl !== originalArticleCover) payload.articleCover = imageUrl;
     if (articleClass) payload.classId = articleClass;
     if (visibleType === 2 && password.trim()) payload.password = password.trim();
     if (isEdit) {

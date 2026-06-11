@@ -6,7 +6,7 @@ import Discuss from '../../components/Discuss';
 import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 import { EditOutlined, EyeOutlined, CommentOutlined, TagOutlined, StarOutlined, StarTwoTone } from '@ant-design/icons';
-import { calcCommentsCount } from '../../utils';
+import { calcCommentsCount, normalizeComments } from '../../utils';
 import 'react-quill/dist/quill.snow.css';
 import Director from '../../components/director';
 import videojs from "video.js";
@@ -23,14 +23,14 @@ function Video() {
         title: '',
         content: '',
         createdAt: '',
-        videocomments: [],
+        comments: [],
         viewCount: 0,
         goodCount: 0,
         tagList: '',
     });
     const videoRef = useRef(null);
     const userInfo = useSelector(state => state.user);
-    const { content, title, poster, createdAt, viewCount, videocomments = [], collectionCount, isCollected } = videoInfo;
+    const { content, title, poster, createdAt = '', viewCount, comments = [], collectionCount, isCollected } = videoInfo;
 
     useEffect(() => {
         window.scrollTo({
@@ -38,7 +38,13 @@ function Video() {
             left: 0,
             behavior: 'smooth'
         });
-        getArticle();
+        setLoading(true);
+        getArticle()
+            .catch((err) => {
+                console.error(err);
+                message.error('视频详情加载失败，请稍后再试');
+            })
+            .finally(() => setLoading(false));
         return destroyVideo;
     }, [id]);
 
@@ -48,10 +54,32 @@ function Video() {
     }
 
     //  获取文章详情
+    const getComments = async () => {
+        try {
+            const res = await request('/comments', {
+                method: 'get',
+                data: {
+                    targetType: 'video',
+                    targetId: parseInt(id),
+                    pageNum: 1,
+                    pageSize: 20,
+                },
+            });
+            if (res.status == 200) {
+                return normalizeComments(res.data);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+        return null;
+    }
+
     const getArticle = async () => {
         let res = await request('/findVideoById', { data: { id: parseInt(id), owner: parseInt(userInfo.userId) } });
         if (res.status == 200) {
             let data = res.data;
+            const pagedComments = await getComments();
+            data.comments = pagedComments !== null ? pagedComments : normalizeComments(data);
             setVideoInfo(data);
             // setVideoUrl(data.videoUrl);
             initVideo(data.videoUrl, data.poster);
@@ -108,7 +136,7 @@ function Video() {
     //  刷新子组件传来的评论列表
     const setCommentList = (commentList) => {
         console.log(commentList)
-        setVideoInfo({ ...videoInfo, videocomments: commentList });
+        setVideoInfo(prevVideoInfo => ({ ...prevVideoInfo, comments: normalizeComments({ comments: commentList }) }));
     }
 
     const initVideo = (videoUrl, poster) => {
@@ -218,7 +246,7 @@ function Video() {
                         <Divider type='vertical' />
                         <a className='comment-count' href='#discuss' style={{ color: 'inherit' }}>
                             <CommentOutlined />
-                            <span style={{ marginRight: 5 }}> {calcCommentsCount(videocomments)}</span>
+                            <span style={{ marginRight: 5 }}> {calcCommentsCount(comments)}</span>
                         </a>
                         <EyeOutlined style={{ margin: '0 2px 0 5px' }} />
                         <span style={{ marginRight: 5 }}>{viewCount}</span>
@@ -237,7 +265,7 @@ function Video() {
                             <p>视频简介：</p>
                             <p>{content}</p>
                         </div>
-                        <Discuss pageType={2} id={id} commentList={videocomments} setCommentList={setCommentList} />
+                        <Discuss pageType={2} id={id} commentList={comments} setCommentList={setCommentList} />
                     </div>
                 </div>
             </article>

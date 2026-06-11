@@ -8,7 +8,7 @@ import Discuss from '../../components/Discuss';
 import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 import { EditOutlined, EyeOutlined, CommentOutlined, TagOutlined, StarOutlined, StarTwoTone } from '@ant-design/icons';
-import { calcCommentsCount } from '../../utils';
+import { calcCommentsCount, normalizeComments, parseMaybeJsonArray } from '../../utils';
 import { clickPreview } from '../../utils/imgreview';
 import 'react-quill/dist/quill.snow.css';
 import Director from '../../components/director';
@@ -85,18 +85,40 @@ function Article() {
     }
 
     //  获取文章详情
+    const getComments = async () => {
+        try {
+            const res = await request('/comments', {
+                method: 'get',
+                data: {
+                    targetType: 'article',
+                    targetId: parseInt(id),
+                    pageNum: 1,
+                    pageSize: 20,
+                },
+            });
+            if (res.status == 200) {
+                return normalizeComments(res.data);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+        return null;
+    }
+
     const getArticle = async () => {
         let res = await request('/findArticleById', { data: { id: parseInt(id), owner: parseInt(userInfo.userId) } });
         if (res.status == 200) {
             let data = res.data;
-            data.content = data.content.replace(/(\n|\r|\r\n|↵)/g, '<br />');
+            data.content = (data.content || '').replace(/(\n|\r|\r\n|↵)/g, '<br />');
             data.content = replaceImgWithAntdImage(data.content);
             let isHaveDirector = data.content.includes('<ol>');
+            const pagedComments = await getComments();
+            data.comments = pagedComments !== null ? pagedComments : normalizeComments(data);
             setIsHaveDirector(isHaveDirector);
             setArticle(data);
             let images = document.getElementsByClassName('preview');
             console.log(images);
-            setTagList(JSON.parse(data.tagList));
+            setTagList(parseMaybeJsonArray(data.tagList));
             setAuthorInfo(data.user);
         } else {
             message.error(res.errorMessage);
@@ -162,7 +184,7 @@ function Article() {
 
     //  刷新子组件传来的评论列表
     const setCommentList = (commentList) => {
-        setArticle({ ...article, comments: commentList });
+        setArticle(prevArticle => ({ ...prevArticle, comments: normalizeComments({ comments: commentList }) }));
     }
 
     return (

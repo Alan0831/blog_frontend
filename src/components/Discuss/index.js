@@ -5,7 +5,8 @@ import { Button, Divider, Dropdown, Input, message } from 'antd';
 import { DownOutlined, LoginOutlined, LogoutOutlined, SendOutlined } from '@ant-design/icons';
 import { request } from '../../utils/request';
 import { loginout } from '../../redux/user/actions';
-import { calcCommentsCount } from '../../utils';
+import { calcCommentsCount, normalizeComments } from '../../utils';
+import { getErrorMessage } from '../../utils/errorMessage';
 import AppAvatar from '../avatar';
 import useBus from '../../hooks/useBus';
 import List from './list';
@@ -57,7 +58,10 @@ function Discuss(props) {
     };
 
     const handleSubmit = async () => {
-        if (!trimmedValue) return;
+        if (!trimmedValue) {
+            message.warning('评论内容不能为空');
+            return;
+        }
         if (!isLoggedIn) {
             message.warning('请先登录后再评论');
             openAuth('login');
@@ -77,12 +81,12 @@ function Discuss(props) {
             if (res.status == 200) {
                 message.success('评论发布成功');
                 setValue('');
-                setCommentList(pageType == 1 ? (res.data.comments || []) : (res.data.videocomments || []));
+                setCommentList(normalizeComments(res.data));
             } else {
-                message.error(res.errorMessage || '评论发布失败');
+                message.error(getErrorMessage(res, '评论发布失败'));
             }
         } catch (err) {
-            message.error('评论发布失败');
+            message.error(getErrorMessage(err?.response, '评论发布失败'));
         } finally {
             setSubmitting(false);
         }

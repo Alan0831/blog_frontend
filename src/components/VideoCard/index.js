@@ -84,7 +84,7 @@ function VideoCard(props) {
               </div>
               <div>
                 <CommentOutlined style={{ margin: '0 3px 0 7px' }} />
-                <span> {calcCommentsCount(videoInfo.videocomments)}</span>
+                <span> {calcCommentsCount(videoInfo.comments || videoInfo.videocomments)}</span>
               </div>
               <div>
                 <StarOutlined style={{ margin: '0 3px 0 7px' }} />

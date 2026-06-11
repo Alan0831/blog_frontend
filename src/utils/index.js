@@ -12,12 +12,32 @@ export const decodeQuery = url => {
 
 // 计算 评论数
 export const calcCommentsCount = commentList => {
-  if (!commentList) return 0;
+  if (!Array.isArray(commentList)) return 0;
   let count = commentList.length;
   commentList.forEach(item => {
     count += (item?.replies || item?.videoreplies || []).length;
   });
   return count;
+}
+
+export const normalizeComments = data => {
+  const comments = data?.comments || data?.rows || data?.videocomments || [];
+  if (!Array.isArray(comments)) return [];
+  return comments.map(comment => ({
+    ...comment,
+    replies: Array.isArray(comment?.replies) ? comment.replies : (comment?.videoreplies || []),
+  }));
+}
+
+export const parseMaybeJsonArray = value => {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
 }
 
 // 取数组中的随机数

@@ -37,7 +37,7 @@ instance.interceptors.request.use(
         return config
     },
     error => {
-        Promise.reject(error)
+        return Promise.reject(error)
     }
 )
 
@@ -45,26 +45,32 @@ instance.interceptors.request.use(
 instance.interceptors.response.use(
     config => {
         // 拦截token失效的请求，统一处理
-        if (config.data && config.data.data.errorType === 'tokenInvalid') {
+        if (config.data?.data?.errorType === 'tokenInvalid') {
             message.error('登录失效，请重新登录');
         }
         return config
     },
     error => {
-        Promise.reject(error)
+        return Promise.reject(error)
     }
 )
 
 export function request(url, options = {}) {
     return new Promise((resolve, reject) => {
+        const method = (options.method || 'post').toLowerCase();
         instance({
             url,
-            method: (options.method || 'post').toLowerCase(),
-            data: { ...options.data },
+            method,
+            data: method === 'get' ? undefined : { ...options.data },
+            params: method === 'get' ? { ...options.data, ...options.params } : options.params,
             responseType: options.responseType ? options.responseType : 'json'
         }).then((res) => {
             resolve(res.data)
         }).catch((err) => {
+            if (err?.response?.data) {
+                resolve(err.response.data);
+                return;
+            }
             reject(err)
         })
     })

@@ -4,20 +4,21 @@ import { Button, Empty, Input, message, Popconfirm, Tooltip } from 'antd';
 import { DeleteOutlined, MessageOutlined, SendOutlined } from '@ant-design/icons';
 import dayjs from '../../utils/dayjs';
 import { request } from '../../utils/request';
+import { normalizeComments } from '../../utils';
+import { getErrorMessage } from '../../utils/errorMessage';
 import AppAvatar from '../avatar';
 
 const { TextArea } = Input;
 const REPLY_LIMIT = 300;
 
-const getReplies = (comment) => comment?.videoreplies || comment?.replies || [];
+const getReplies = (comment) => comment?.replies || comment?.videoreplies || [];
 
-const updateDeletedReply = (commentList, commentId, replyId, pageType) => {
-    const replyKey = pageType == 1 ? 'replies' : 'videoreplies';
+const updateDeletedReply = (commentList, commentId, replyId) => {
     return commentList.map(comment => {
         if (comment.id !== commentId) return comment;
         return {
             ...comment,
-            [replyKey]: getReplies(comment).filter(reply => reply.id !== replyId),
+            replies: getReplies(comment).filter(reply => reply.id !== replyId),
         };
     });
 };
@@ -61,7 +62,10 @@ function CommentItem(props) {
     };
 
     const submitReply = async () => {
-        if (!trimmedValue) return;
+        if (!trimmedValue) {
+            message.warning('回复内容不能为空');
+            return;
+        }
         if (!isLoggedIn) {
             message.warning('请先登录后再回复');
             onLogin();
@@ -83,13 +87,13 @@ function CommentItem(props) {
             if (res.status == 200) {
                 message.success('回复成功');
                 setValue('');
-                setCommentList(pageType == 1 ? (res.data.comments || []) : (res.data.videocomments || []));
+                setCommentList(normalizeComments(res.data));
                 onReply({ commentId: 0, replyId: 0 });
             } else {
-                message.error(res.errorMessage || '回复失败');
+                message.error(getErrorMessage(res, '回复失败'));
             }
         } catch (err) {
-            message.error('回复失败');
+            message.error(getErrorMessage(err?.response, '回复失败'));
         } finally {
             setSubmitting(false);
         }
@@ -109,16 +113,16 @@ function CommentItem(props) {
             const res = await request(endpoint, { data });
             if (res.status == 200) {
                 if (replyId) {
-                    setCommentList(updateDeletedReply(commentList, commentId, replyId, pageType));
+                    setCommentList(updateDeletedReply(commentList, commentId, replyId));
                 } else {
                     setCommentList(commentList.filter(comment => comment.id !== commentId));
                 }
                 message.success('删除成功');
             } else {
-                message.error(res.errorMessage || '删除失败');
+                message.error(getErrorMessage(res, '删除失败'));
             }
         } catch (err) {
-            message.error('删除失败');
+            message.error(getErrorMessage(err?.response, '删除失败'));
         }
     };
 

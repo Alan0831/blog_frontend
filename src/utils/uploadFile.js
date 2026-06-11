@@ -2,6 +2,7 @@ const CHUNK_SIZE = 1024 * 1024; // 1MB
 const SparkMD5 = require('spark-md5');
 import { request } from './request';
 import { message } from 'antd';
+import { createErrorByResponse } from './errorMessage';
 
 // 对视频切片
 const createChunks = (file) => {
@@ -16,7 +17,7 @@ const createChunks = (file) => {
 
 // 计算文件内容hash值
 const calculateHash = (file) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const fileReader = new FileReader();
         fileReader.readAsArrayBuffer(file);
         fileReader.onload = function (e) {
@@ -63,7 +64,29 @@ const uploadChunks = async (chunks, fileHash, existChunks, progresscb) => {
     );
 
     // 控制请求并发
-    await concurRequest(taskPool, 6, progresscb);
+    const results = await concurRequest(taskPool, 6, progresscb);
+    for (const result of results) {
+        if (result instanceof Error) {
+            throw result;
+        }
+        if (!result?.ok) {
+            let errorData = {};
+            try {
+                errorData = await result.clone().json();
+            } catch (error) {
+                errorData = { errorCode: 'VIDEO_CHUNK_UPLOAD_FAILED' };
+            }
+            throw createErrorByResponse(errorData, '单片上传失败，请重试当前视频');
+        }
+        try {
+            const data = await result.clone().json();
+            if (data?.status && data.status != 200) {
+                throw createErrorByResponse(data, '单片上传失败，请重试当前视频');
+            }
+        } catch (error) {
+            if (error?.errorCode) throw error;
+        }
+    }
 };
 
 // 控制请求并发
@@ -112,7 +135,7 @@ const mergeRequest = async (fileHash, fileName, userId) => {
         return res;
     } catch (err) {
         console.error(err);
-        return {};
+        throw err;
     }
 }
 
@@ -123,7 +146,7 @@ const verify = async (fileHash, fileName) => {
         return res;
     } catch (err) {
         console.error(err);
-        return {};
+        throw err;
     }
 };
 
@@ -149,7 +172,10 @@ export async function uploadFileChunk(file, userId, cb, failcb, progresscb) {
         const verifyRes = await verify(fileHash, fileName);
         progresscb(1);
         console.log(verifyRes);
-        const { existFile, existChunks, videoUrl = '' } = verifyRes.data;
+        if (verifyRes.status != 200) {
+            throw createErrorByResponse(verifyRes, '视频校验失败，请稍后重试');
+        }
+        const { existFile, existChunks = [], videoUrl = '' } = verifyRes.data || {};
         if (existFile) {
             message.success('上传成功');
             progresscb(100);
@@ -157,21 +183,23 @@ export async function uploadFileChunk(file, userId, cb, failcb, progresscb) {
             return
         };
         // 上传分片文件
-        await uploadChunks(chunks, fileHash, existChunks, progresscb);
+        await uploadChunks(chunks, fileHash, Array.isArray(existChunks) ? existChunks : [], progresscb);
 
         // 合并分片文件
         let mergeRes = await mergeRequest(fileHash, fileName, userId);
         console.log(mergeRes);
-        const { videoUrl: url } = mergeRes.data;
+        if (mergeRes.status != 200) {
+            throw createErrorByResponse(mergeRes, '视频合并失败，请稍后重试或重新上传');
+        }
+        const { videoUrl: url } = mergeRes.data || {};
         if (url) {
             message.success('上传成功');
             cb && cb(url);
         } else {
-            message.error('上传失败');
-            failcb && failcb();
+            throw createErrorByResponse({ errorCode: 'VIDEO_MERGE_FAILED' }, '视频合并失败，请稍后重试或重新上传');
         }
     } catch (error) {
         console.error(error);
-        failcb && failcb();
+        failcb && failcb(error);
     }
 }

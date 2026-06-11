@@ -5,6 +5,7 @@ const CopyPlugin = require('copy-webpack-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const shouldAnalyze = process.env.ANALYZE === 'true';
 
 module.exports = merge(base, {
   mode: 'production', // 生产模式,会开启tree-shaking和压缩代码,以及其他优化
@@ -25,7 +26,10 @@ module.exports = merge(base, {
         },
       ],
     }),
-    new BundleAnalyzerPlugin(),
+    new BundleAnalyzerPlugin({
+      analyzerMode: shouldAnalyze ? 'server' : 'disabled',
+      openAnalyzer: shouldAnalyze,
+    }),
   ],
   optimization: {
     minimizer: [ 

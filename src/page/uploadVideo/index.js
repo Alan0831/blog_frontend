@@ -3,6 +3,7 @@ import './index.less';
 import { request } from '../../utils/request';
 import { Button, Input, message, Upload, Progress } from 'antd';
 import { uploadFileChunk } from '../../utils/uploadFile';
+import { getErrorMessage } from '../../utils/errorMessage';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -34,6 +35,7 @@ function UploadVideo() {
   const [percent, setPercent] = useState(0);
   const [file, setFile] = useState([]);
   const [fileImage, setFileImage] = useState([]);
+  const [originalVideoInfo, setOriginalVideoInfo] = useState({ videoUrl: '', poster: '' });
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -79,6 +81,10 @@ function UploadVideo() {
         setTitle(data.title || '');
         setImageUrl(data.poster || '');
         setVideoUrl(data.videoUrl || '');
+        setOriginalVideoInfo({
+          videoUrl: data.videoUrl || '',
+          poster: data.poster || '',
+        });
         setContent(data.content || '');
         setPercent(data.videoUrl ? 100 : 0);
         setFile(data.videoUrl ? [{
@@ -136,11 +142,16 @@ function UploadVideo() {
       title: title.trim(),
       content: content.trim(),
       authorId,
-      videoUrl,
       visibleType: 1,
-      poster: imageUrl,
     };
-    if (isEdit) payload.videoId = videoId;
+    if (isEdit) {
+      payload.videoId = videoId;
+      if (videoUrl !== originalVideoInfo.videoUrl) payload.videoUrl = videoUrl;
+      if (imageUrl !== originalVideoInfo.poster) payload.poster = imageUrl;
+    } else {
+      payload.videoUrl = videoUrl;
+      payload.poster = imageUrl;
+    }
 
     try {
       setSubmitting(true);
@@ -149,10 +160,10 @@ function UploadVideo() {
         message.success(isEdit ? '修改成功' : '上传成功');
         navigate(isEdit ? '/help' : '/', isEdit ? { state: { key: '6' } } : undefined);
       } else {
-        message.error(res.errorMessage);
+        message.error(getErrorMessage(res, '提交失败，请稍后再试'));
       }
     } catch (error) {
-      message.error('提交失败，请稍后再试');
+      message.error(getErrorMessage(error?.response, '提交失败，请稍后再试'));
     } finally {
       setSubmitting(false);
     }
@@ -215,7 +226,7 @@ function UploadVideo() {
         setVideoUploading(false);
         config.onSuccess?.({ url });
       },
-      () => {
+      (error) => {
         setFile([{
           uid: currentFile.uid || String(Date.now()),
           name: currentFile.name,
@@ -225,12 +236,12 @@ function UploadVideo() {
         setVideoUrl('');
         setVideoUploading(false);
         config.onError?.(new Error('upload failed'));
-        message.error('视频上传失败，请稍后再试');
+        message.error(error?.message || '视频上传失败，请稍后再试');
       },
       (nextPercent) => {
         setPercent(Math.max(1, Math.round(nextPercent)));
       },
-    ).catch(() => {
+    ).catch((error) => {
       setFile([{
         uid: currentFile.uid || String(Date.now()),
         name: currentFile.name,
@@ -239,8 +250,8 @@ function UploadVideo() {
       }]);
       setVideoUrl('');
       setVideoUploading(false);
-      config.onError?.(new Error('upload failed'));
-      message.error('视频上传失败，请稍后再试');
+      config.onError?.(error || new Error('upload failed'));
+      message.error(error?.message || '视频上传失败，请稍后再试');
     });
   };
 
