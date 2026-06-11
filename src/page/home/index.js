@@ -9,10 +9,49 @@ import './index.less'
 import Recommend from '../../components/Recommend';
 import useBus from '../../hooks/useBus';
 import AlanCard from '../../components/alanCard';
-import MenuType from '../../components/menuType';
+import MenuType, { defaultMenuTypes } from '../../components/menuType';
 import TagCard from '../../components/TagCard';
 
 const socket = location.origin.includes('localhost') ? new WebSocket('ws://127.0.0.1:9998') : new WebSocket('ws://8.152.1.135:9998');
+
+const topicTabs = [
+    {
+        key: 'codeStudy',
+        title: '代码学习',
+        description: '刷题、笔记和技术灵感',
+        menuTypes: [1, 2, 3],
+    },
+    {
+        key: 'chatter',
+        title: '杂谈',
+        description: '日常记录和轻松分享',
+        menuTypes: [1, 2],
+    },
+];
+
+const getTopicMenuOptions = (topicKey) => {
+    const topic = topicTabs.find(item => item.key === topicKey) || topicTabs[0];
+    return defaultMenuTypes.filter(item => topic.menuTypes.includes(item.menuType));
+};
+
+const getInitialTopic = () => {
+    const lastTopic = localStorage.getItem('lastHomeTopic');
+    return topicTabs.some(item => item.key === lastTopic) ? lastTopic : 'codeStudy';
+};
+
+const getInitialMenuTypeByTopic = () => {
+    let savedMenuType = {};
+    try {
+        savedMenuType = JSON.parse(localStorage.getItem('lastHomeMenuTypeByTopic') || '{}');
+    } catch (error) {
+        savedMenuType = {};
+    }
+    const legacyMenuType = parseInt(localStorage.getItem('lastUseMenuType'));
+    return {
+        codeStudy: savedMenuType.codeStudy || legacyMenuType || 1,
+        chatter: [1, 2].includes(savedMenuType.chatter) ? savedMenuType.chatter : 1,
+    };
+};
 
 export default function Home() {
     const [listData, setData] = useState([]);
@@ -23,9 +62,10 @@ export default function Home() {
     const [pageNum, setPageNum] = useState(1);
     const [total, setTotal] = useState(0);
     const [tagList, setTagList] = useState([]);
-    const [keyword, setKeyword] = useState('');
+    const [keywordByView, setKeywordByView] = useState({});
     const [searchedKeywords, setSearchedKeywords] = useState({});
-    const [menuType, setMenuType] = useState(1);
+    const [activeTopic, setActiveTopic] = useState(getInitialTopic);
+    const [menuTypeByTopic, setMenuTypeByTopic] = useState(getInitialMenuTypeByTopic);
     const userInfo = useSelector(state => state.user);
     const articleTotal = useRef({});
     const videoTotal = useRef({});
@@ -34,6 +74,11 @@ export default function Home() {
     const videoRecommend = useRef({});
     const codeRecommend = useRef({});
     const bus = useBus();
+    const menuType = menuTypeByTopic[activeTopic] || 1;
+    const activeViewKey = `${activeTopic}-${menuType}`;
+    const keyword = keywordByView[activeViewKey] || '';
+    const activeTopicInfo = topicTabs.find(item => item.key === activeTopic) || topicTabs[0];
+    const activeMenuOptions = getTopicMenuOptions(activeTopic);
 
     useEffect(() => {
         initSocket();
@@ -41,26 +86,12 @@ export default function Home() {
         Promise.allSettled([getRecommendArticleList(), getRecommendVideoList(), getArticleList(), getVideoList(), getCodeTopicList(), getTagList()])
                 .then(() => {
                     console.log('加载数据完成');
-                    let lastUseMenuType = localStorage.getItem('lastUseMenuType');
-                    if (lastUseMenuType) {
-                        lastUseMenuType = parseInt(lastUseMenuType);
-                        if (lastUseMenuType == 1) {
-                            setTotal(articleTotal.current.total);
-                            setRecommendList(articleRecommend.current);
-                        } else if (lastUseMenuType == 2) {
-                            setTotal(videoTotal.current.total);
-                            setRecommendList(videoRecommend.current);
-                        } else {
-                            setTotal(codeTotal.current.total);
-                            setRecommendList(codeRecommend.current);
-                        }
-                        setPageNum(1);
-                        setMenuType(lastUseMenuType);
-                    } else {
-                        setPageNum(1);
-                        setRecommendList(articleRecommend.current);
-                        setTotal(articleTotal.current.total);
-                    }
+                    const initialTopic = getInitialTopic();
+                    const initialMenuMap = getInitialMenuTypeByTopic();
+                    const initialMenuType = initialTopic === 'chatter' && initialMenuMap[initialTopic] == 3 ? 1 : initialMenuMap[initialTopic];
+                    setActiveTopic(initialTopic);
+                    setMenuTypeByTopic({ ...initialMenuMap, [initialTopic]: initialMenuType });
+                    syncMenuMeta(initialMenuType);
                 })
                 .catch((err) => console.error(err));
     }, []);
@@ -186,8 +217,7 @@ export default function Home() {
         }
     }
 
-    //  点击菜单列表类型
-    const clickMenu = (type) => {
+    const syncMenuMeta = (type) => {
         if (type == 1) {
             setTotal(articleTotal.current.total);
             setPageNum(articleTotal.current.pageNum);
@@ -201,8 +231,42 @@ export default function Home() {
             setPageNum(codeTotal.current.pageNum);
             setRecommendList(codeRecommend.current);
         }
-        setMenuType(type);
+    }
+
+    const loadMenuData = (type, page = 1, nextKeyword = '') => {
+        if (type == 1) {
+            getArticleList(page, 10, nextKeyword);
+        } else if (type == 2) {
+            getVideoList(page, 10, nextKeyword);
+        } else {
+            getCodeTopicList(page, 10, nextKeyword);
+        }
+    }
+
+    //  点击顶部标签页
+    const clickTopic = (topicKey) => {
+        const nextTopic = topicTabs.find(item => item.key === topicKey);
+        if (!nextTopic) return;
+
+        const currentTopicMenuType = menuTypeByTopic[topicKey] || 1;
+        const nextMenuType = nextTopic.menuTypes.includes(currentTopicMenuType) ? currentTopicMenuType : 1;
+        setActiveTopic(topicKey);
+        setMenuTypeByTopic(prev => ({ ...prev, [topicKey]: nextMenuType }));
+        syncMenuMeta(nextMenuType);
+        loadMenuData(nextMenuType, 1, keywordByView[`${topicKey}-${nextMenuType}`] || '');
+        localStorage.setItem('lastHomeTopic', topicKey);
+    }
+
+    //  点击菜单列表类型
+    const clickMenu = (type) => {
+        if (!activeTopicInfo.menuTypes.includes(type)) return;
+
+        syncMenuMeta(type);
+        const nextMenuTypeByTopic = { ...menuTypeByTopic, [activeTopic]: type };
+        setMenuTypeByTopic(nextMenuTypeByTopic);
+        loadMenuData(type, 1, keywordByView[`${activeTopic}-${type}`] || '');
         localStorage.setItem('lastUseMenuType', type);
+        localStorage.setItem('lastHomeMenuTypeByTopic', JSON.stringify(nextMenuTypeByTopic));
     }
 
     //  翻页
@@ -223,7 +287,7 @@ export default function Home() {
 
     const handlePressEnter = () => {
         const nextKeyword = keyword.trim();
-        setSearchedKeywords(prev => ({ ...prev, [menuType]: nextKeyword }));
+        setSearchedKeywords(prev => ({ ...prev, [activeViewKey]: nextKeyword }));
         if (menuType == 1) {
             getArticleList(1, 10, nextKeyword);
         } else if (menuType == 2) {
@@ -246,7 +310,7 @@ export default function Home() {
 
     const renderHomeList = () => {
         const currentList = menuType == 1 ? listData : menuType == 2 ? videoListData : codeListData;
-        const activeSearchedKeyword = searchedKeywords[menuType] || '';
+        const activeSearchedKeyword = searchedKeywords[activeViewKey] || '';
 
         if (!loading && activeSearchedKeyword && currentList.length === 0) {
             return (
@@ -291,16 +355,31 @@ export default function Home() {
                             <div className='home_search'>
                                 <Input
                                     placeholder={getSearchPlaceholder()}
-                                    onChange={(e) => setKeyword(e.target.value)}
+                                    onChange={(e) => setKeywordByView(prev => ({ ...prev, [activeViewKey]: e.target.value }))}
                                     value={keyword}
                                     onPressEnter={handlePressEnter}
                                     style={{ borderRadius: '7px', border: '2px solid hsl(236, 32%, 26%)' }}
                                 // suffix={<InfoCircleOutlined style={{color: 'rgba(0,0,0,.45)'}}/>}
                                 />
                             </div>
-                            <MenuType clickMenu={clickMenu}></MenuType>
+                            <MenuType clickMenu={clickMenu} activeType={menuType} options={activeMenuOptions}></MenuType>
                         </div>
                         <div className='home_middle_content'>
+                            <div className='home_topic_tabs' role='tablist' aria-label='内容分区'>
+                                {topicTabs.map(item => (
+                                    <button
+                                        type='button'
+                                        role='tab'
+                                        aria-selected={activeTopic === item.key}
+                                        className={`home_topic_tab ${activeTopic === item.key ? 'is-active' : ''}`}
+                                        key={item.key}
+                                        onClick={() => clickTopic(item.key)}
+                                    >
+                                        <span>{item.title}</span>
+                                        <small>{item.description}</small>
+                                    </button>
+                                ))}
+                            </div>
                             <div className='home_list'>
                                 {renderHomeList()}
                             </div>
