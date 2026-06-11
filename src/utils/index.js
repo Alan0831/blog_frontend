@@ -15,11 +15,7 @@ export const calcCommentsCount = commentList => {
   if (!commentList) return 0;
   let count = commentList.length;
   commentList.forEach(item => {
-    if (item?.replies) {
-      count += item?.replies.length;
-    } else {
-      count += item?.videoreplies.length;
-    }
+    count += (item?.replies || item?.videoreplies || []).length;
   });
   return count;
 }

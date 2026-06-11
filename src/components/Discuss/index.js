@@ -1,157 +1,171 @@
-import React, { useState, useEffect } from 'react'
-import PropTypes from 'prop-types'
-import './index.less'
-// import { DISCUSS_AVATAR } from '@/config'
+import React, { useMemo, useState } from 'react';
+import PropTypes from 'prop-types';
+import { useDispatch, useSelector } from 'react-redux';
+import { Button, Divider, Dropdown, Input, message } from 'antd';
+import { DownOutlined, LoginOutlined, LogoutOutlined, SendOutlined } from '@ant-design/icons';
 import { request } from '../../utils/request';
-import { useSelector, useDispatch } from 'react-redux'
-import { QqOutlined, DownOutlined } from '@ant-design/icons';
-import { loginout } from '../../redux/user/actions'
-// methods
-import { calcCommentsCount } from '../../utils'
+import { loginout } from '../../redux/user/actions';
+import { calcCommentsCount } from '../../utils';
+import AppAvatar from '../avatar';
+import useBus from '../../hooks/useBus';
+import List from './list';
+import './index.less';
 
-// components
-import { Comment, Avatar, Form, Button, Divider, Input, Menu, Dropdown, message, Modal } from 'antd'
-import List from './list' // 评论列表
-import AppAvatar from '../avatar'
-import useBus from '../../hooks/useBus'
-const { TextArea } = Input
-
-const Editor = ({ onChange, onSubmit, value }) => (
-    <div>
-        <TextArea rows={4} placeholder='说点什么...' onChange={onChange} value={value} />
-        <div className='controls'>
-            <Button className='disscus-btn button' htmlType='submit' onClick={onSubmit} type='primary' disabled={!value.trim()}>
-                发布
-            </Button>
-        </div>
-    </div>
-)
+const { TextArea } = Input;
+const COMMENT_LIMIT = 500;
 
 function Discuss(props) {
     const dispatch = useDispatch();
     const userInfo = useSelector(state => state.user);
-    console.log(userInfo);
     const bus = useBus();
-    const { username, userId } = userInfo;
-    const { commentList, id, pageType } = props;
+    const { commentList = [], id, pageType, setCommentList } = props;
     const [value, setValue] = useState('');
-    const renderDropdownMenu = () => username ? {
-        items: [
-            {
-                key: 'loginout',
-                label: '注销',
-            },
-        ]
-    } : {
-        items: [
+    const [submitting, setSubmitting] = useState(false);
+    const isLoggedIn = Boolean(userInfo?.username && userInfo?.userId > 0);
+    const trimmedValue = value.trim();
+    const commentCount = useMemo(() => calcCommentsCount(commentList), [commentList]);
 
+    const openAuth = (type = 'login') => {
+        bus.emit('openSignModal', type);
+    };
+
+    const userMenu = {
+        items: isLoggedIn ? [
+            {
+                key: 'logout',
+                icon: <LogoutOutlined />,
+                label: '退出登录',
+            },
+        ] : [
             {
                 key: 'login',
-                label: (
-                    <div onClick={() => handleMenuClick('login')}>登录</div>
-                ),
+                icon: <LoginOutlined />,
+                label: '登录',
             },
             {
                 key: 'register',
-                label: (
-                    <div onClick={() => handleMenuClick('register')}>注册</div>
-                ),
+                label: '注册',
             },
-        ]
+        ],
+        onClick: ({ key }) => {
+            if (key === 'logout') {
+                dispatch(loginout());
+                return;
+            }
+            openAuth(key);
+        },
     };
 
-    const handleMenuClick = (type) => {
-        console.log(type)
-        switch (type) {
-            case 'login':
-                bus.emit('openSignModal', 'login');
-                break
-            case 'register':
-                bus.emit('openSignModal', 'register');
-                break
-            case 'loginout':
-                dispatch(loginout());
-                break
-            default:
-                break
-        }
-    }
-
     const handleSubmit = async () => {
-        if (!value) return
-        if (!userInfo.username) return message.warn('您未登陆，请登录后再评论。');
-        if (pageType == 1) {
-            let obj = {
-                content: value,
-                userId,
-                articleId: parseInt(id),
-                type: 1, // type:1 评论  2 回复
-            }
-            let res = await request('/createComment', { data: obj });
-            if (res.status == 200) {
-                message.success('发布评论成功！');
-                setValue('');
-                props.setCommentList(res.data.comments);
-            } else {
-                message.error(res.errorMessage);
-            }
-        } else {
-            let obj = {
-                content: value,
-                userId,
-                videoId: parseInt(id),
-                type: 1, // type:1 评论  2 回复
-            }
-            let res = await request('/createVideoComment', { data: obj });
-            if (res.status == 200) {
-                message.success('发布评论成功！');
-                setValue('');
-                props.setCommentList(res.data.videocomments);
-            } else {
-                message.error(res.errorMessage);
-            }
+        if (!trimmedValue) return;
+        if (!isLoggedIn) {
+            message.warning('请先登录后再评论');
+            openAuth('login');
+            return;
         }
-    }
+
+        const data = {
+            content: trimmedValue,
+            userId: userInfo.userId,
+            type: 1,
+            ...(pageType == 1 ? { articleId: parseInt(id) } : { videoId: parseInt(id) }),
+        };
+
+        setSubmitting(true);
+        try {
+            const res = await request(pageType == 1 ? '/createComment' : '/createVideoComment', { data });
+            if (res.status == 200) {
+                message.success('评论发布成功');
+                setValue('');
+                setCommentList(pageType == 1 ? (res.data.comments || []) : (res.data.videocomments || []));
+            } else {
+                message.error(res.errorMessage || '评论发布失败');
+            }
+        } catch (err) {
+            message.error('评论发布失败');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleKeyDown = (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+            handleSubmit();
+        }
+    };
 
     return (
-        <div id='discuss'>
-            <div className='discuss-header'>
+        <section id='discuss' className='comment-panel'>
+            <div className='comment-panel-header'>
                 <div>
-                    <span className='discuss-count'>{calcCommentsCount(commentList)}</span>
-                    {id !== -1 ? '条评论' : '条留言'}
+                    <div className='comment-title'>评论</div>
+                    <div className='comment-subtitle'>
+                        <span className='comment-count'>{commentCount}</span>
+                        条讨论
+                    </div>
                 </div>
-                <span className='discuss-user'>
-                    <Dropdown menu={renderDropdownMenu()} trigger={['click', 'hover']}>
-                        {username ? (<AppAvatar userInfo={userInfo} />) : <span>未登录用户 &nbsp; <DownOutlined /></span>}
-                    </Dropdown>
-                </span>
-                <Divider className='hr' />
+                <Dropdown menu={userMenu} trigger={['click']}>
+                    <button className='comment-user' type='button'>
+                        {isLoggedIn ? <AppAvatar userInfo={userInfo} /> : <span className='guest-avatar'>未</span>}
+                        <span>{isLoggedIn ? userInfo.username : '未登录'}</span>
+                        <DownOutlined />
+                    </button>
+                </Dropdown>
             </div>
 
-            <Comment
-                avatar={
-                    username ? (
-                        <AppAvatar userInfo={userInfo} />
-                    ) : (
-                        <QqOutlined style={{ fontSize: 40, margin: '5px 5px 0 0' }} />
-                    )
-                }
-                content={
-                    <Editor
-                        onChange={(e) => setValue(e.target.value)}
-                        onSubmit={handleSubmit}
-                        value={value}
-                    />
-                }
-            />
+            <Divider className='comment-divider' />
 
-            <List pageType={pageType} commentList={commentList} id={id} setCommentList={props.setCommentList} />
-        </div>
-    )
+            <div className='comment-composer'>
+                <div className='composer-avatar'>
+                    {isLoggedIn ? <AppAvatar userInfo={userInfo} /> : <span className='guest-avatar'>未</span>}
+                </div>
+                <div className='composer-main'>
+                    <TextArea
+                        rows={4}
+                        maxLength={COMMENT_LIMIT}
+                        placeholder={isLoggedIn ? '说点什么，参与讨论...' : '登录后参与讨论'}
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                    />
+                    <div className='composer-footer'>
+                        <span className='composer-tip'>支持 Ctrl / Command + Enter 发布</span>
+                        <div className='composer-actions'>
+                            <span className='comment-length'>{value.length}/{COMMENT_LIMIT}</span>
+                            {!isLoggedIn ? (
+                                <Button onClick={() => openAuth('login')}>登录后评论</Button>
+                            ) : (
+                                <Button
+                                    icon={<SendOutlined />}
+                                    type='primary'
+                                    loading={submitting}
+                                    disabled={!trimmedValue}
+                                    onClick={handleSubmit}
+                                >
+                                    发布
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <List
+                pageType={pageType}
+                commentList={commentList}
+                id={id}
+                setCommentList={setCommentList}
+                onLogin={() => openAuth('login')}
+            />
+        </section>
+    );
 }
 
 Discuss.propTypes = {
-    commentList: PropTypes.array.isRequired
-}
+    commentList: PropTypes.array.isRequired,
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    pageType: PropTypes.number.isRequired,
+    setCommentList: PropTypes.func.isRequired,
+};
 
-export default Discuss
+export default Discuss;
