@@ -92,12 +92,6 @@ function Discuss(props) {
         }
     };
 
-    const handleKeyDown = (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            handleSubmit();
-        }
-    };
-
     return (
         <section id='discuss' className='comment-panel'>
             <div className='comment-panel-header'>
@@ -130,20 +124,18 @@ function Discuss(props) {
                         placeholder={isLoggedIn ? '说点什么，参与讨论...' : '登录后参与讨论'}
                         value={value}
                         onChange={(e) => setValue(e.target.value)}
-                        onKeyDown={handleKeyDown}
                     />
                     <div className='composer-footer'>
-                        <span className='composer-tip'>支持 Ctrl / Command + Enter 发布</span>
                         <div className='composer-actions'>
                             <span className='comment-length'>{value.length}/{COMMENT_LIMIT}</span>
                             {!isLoggedIn ? (
-                                <Button onClick={() => openAuth('login')}>登录后评论</Button>
+                                <Button className='comment-submit-button' onClick={() => openAuth('login')}>登录后评论</Button>
                             ) : (
                                 <Button
+                                    className='comment-submit-button'
                                     icon={<SendOutlined />}
                                     type='primary'
                                     loading={submitting}
-                                    disabled={!trimmedValue}
                                     onClick={handleSubmit}
                                 >
                                     发布

@@ -1,4 +1,6 @@
 const CHUNK_SIZE = 1024 * 1024; // 1MB
+const VIDEO_PROCESS_POLL_INTERVAL = 4000; // 后端切片是异步任务，前端每 4 秒查一次状态
+const VIDEO_PROCESS_MAX_RETRY = 450; // 最多等待 30 分钟，防止轮询无限卡住
 const SparkMD5 = require('spark-md5');
 import { request } from './request';
 import { message } from 'antd';
@@ -150,6 +152,49 @@ const verify = async (fileHash, fileName) => {
     }
 };
 
+const sleep = (time) => new Promise(resolve => setTimeout(resolve, time));
+
+// 查询视频后台切片/转码进度，mergeChunks 返回 processing 后依靠这个接口继续等
+const getVideoProcessStatus = async (fileHash) => {
+    try {
+        let res = await request('/getVideoProcessStatus', { data: { fileHash } });
+        return res;
+    } catch (err) {
+        console.error(err);
+        throw err;
+    }
+};
+
+// 轮询后端 processing 状态，只有 success 才把 master.m3u8 交给业务表单，failed 则明确提示失败原因
+const waitVideoProcessFinish = async (fileHash, progresscb) => {
+    let lastPercent = 80;
+
+    for (let i = 0; i < VIDEO_PROCESS_MAX_RETRY; i++) {
+        const statusRes = await getVideoProcessStatus(fileHash);
+        if (statusRes.status != 200) {
+            throw createErrorByResponse(statusRes, '获取视频处理进度失败');
+        }
+
+        const processInfo = statusRes.data || {};
+        const serverProgress = Number(processInfo.progress || 0);
+        // 从 80% 开始展示后端转码进度，映射到 80%-99%，避免切片未完成时误显示 100%
+        lastPercent = Math.min(99, Math.max(lastPercent, 80 + Math.round(serverProgress * 0.2)));
+        progresscb && progresscb(lastPercent, processInfo);
+
+        if (processInfo.status === 'success') {
+            progresscb && progresscb(100, processInfo);
+            return processInfo;
+        }
+
+        if (processInfo.status === 'failed') {
+            throw new Error(processInfo.errorMessage || processInfo.message || '视频处理失败');
+        }
+
+        await sleep(VIDEO_PROCESS_POLL_INTERVAL);
+    }
+
+    throw new Error('视频处理超时，请稍后刷新或重新上传');
+};
 /**
  *  
  * @param {*} file 文件名
@@ -162,44 +207,66 @@ const verify = async (fileHash, fileName) => {
 export async function uploadFileChunk(file, userId, cb, failcb, progresscb) {
     console.log(file);
     const fileName = file.name;
-    // 创建文件分片
+    // 生成分片
     const chunks = createChunks(file);
-    // 计算文件内容hash值
+    // 计算文件 hash，后端依据该值做秒传/断点续传
     let fileHash = await calculateHash(file);
 
     try {
-        // 校验文件、文件分片是否存在
+        // 先问后端是否已有该文件，如果已在处理中就直接轮询等结果
         const verifyRes = await verify(fileHash, fileName);
         progresscb(1);
         console.log(verifyRes);
         if (verifyRes.status != 200) {
-            throw createErrorByResponse(verifyRes, '视频校验失败，请稍后重试');
+            throw createErrorByResponse(verifyRes, '验证视频状态失败');
         }
-        const { existFile, existChunks = [], videoUrl = '' } = verifyRes.data || {};
+        const { existFile, existChunks = [], videoUrl = '', processStatus = '', processInfo = {} } = verifyRes.data || {};
         if (existFile) {
-            message.success('上传成功');
-            progresscb(100);
-            cb && cb(videoUrl);
-            return
+            const currentStatus = processInfo.status || processStatus;
+            // 秒传只能在后端确认 master.m3u8 已生成后才算成功
+            if (currentStatus === 'success') {
+                message.success('视频已存在');
+                progresscb(100, processInfo);
+                cb && cb(videoUrl || processInfo.videoUrl, processInfo);
+                return;
+            }
+            if (currentStatus === 'processing') {
+                message.info('视频已上传，正在等待后端处理');
+                const finishedInfo = await waitVideoProcessFinish(fileHash, progresscb);
+                cb && cb(finishedInfo.videoUrl || videoUrl, finishedInfo);
+                return;
+            }
+            throw createErrorByResponse({ errorCode: 'VIDEO_PROCESS_UNKNOWN' }, '视频处理状态异常，请重新上传');
         };
-        // 上传分片文件
-        await uploadChunks(chunks, fileHash, Array.isArray(existChunks) ? existChunks : [], progresscb);
+        // 实际文件分片上传占 1%-78%，剩余进度留给后端切片/转码
+        await uploadChunks(chunks, fileHash, Array.isArray(existChunks) ? existChunks : [], (chunkPercent) => {
+            progresscb(Math.max(1, Math.min(78, Math.round(chunkPercent * 0.78))));
+        });
 
-        // 合并分片文件
+        // 合并请求现在只启动后端异步任务，不代表视频已经可播
         let mergeRes = await mergeRequest(fileHash, fileName, userId);
         console.log(mergeRes);
         if (mergeRes.status != 200) {
-            throw createErrorByResponse(mergeRes, '视频合并失败，请稍后重试或重新上传');
+            throw createErrorByResponse(mergeRes, '视频合并或处理启动失败');
         }
-        const { videoUrl: url } = mergeRes.data || {};
-        if (url) {
-            message.success('上传成功');
-            cb && cb(url);
-        } else {
-            throw createErrorByResponse({ errorCode: 'VIDEO_MERGE_FAILED' }, '视频合并失败，请稍后重试或重新上传');
+        const { videoUrl: url, fileHash: mergedHash = fileHash, processStatus: mergedStatus = '' } = mergeRes.data || {};
+        if (!url) {
+            throw createErrorByResponse({ errorCode: 'VIDEO_MERGE_FAILED' }, '后端未返回视频地址，请重试');
         }
+
+        progresscb(80, { status: mergedStatus || 'processing', videoUrl: url, fileHash: mergedHash });
+        if (mergedStatus === 'processing') {
+            message.info('视频上传完成，正在后台切片');
+            const finishedInfo = await waitVideoProcessFinish(mergedHash, progresscb);
+            cb && cb(finishedInfo.videoUrl || url, finishedInfo);
+            return;
+        }
+
+        progresscb(100, { status: mergedStatus || 'success', videoUrl: url, fileHash: mergedHash });
+        cb && cb(url, { status: mergedStatus || 'success', videoUrl: url, fileHash: mergedHash });
     } catch (error) {
         console.error(error);
         failcb && failcb(error);
+        throw error;
     }
 }

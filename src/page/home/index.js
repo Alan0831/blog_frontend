@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react'
-import { message, Input, Pagination, Spin, Empty, Button } from 'antd';
+import React, { useEffect, useState } from 'react'
+import { Input, Pagination, Spin, Empty } from 'antd';
 import ArticleCard from '../../components/ArticleCard';
 import VideoCard from '../../components/VideoCard';
 import CodeCard from '../../components/CodeCard';
@@ -17,20 +17,26 @@ const socket = location.origin.includes('localhost') ? new WebSocket('ws://127.0
 const topicTabs = [
     {
         key: 'codeStudy',
-        title: '代码学习',
+        partition: 'codeStudy',
+        title: '学习',
         description: '刷题、笔记和技术灵感',
         menuTypes: [1, 2, 3],
     },
     {
         key: 'chatter',
+        partition: 'chatter',
         title: '杂谈',
         description: '日常记录和轻松分享',
         menuTypes: [1, 2],
     },
 ];
 
+const getTopicInfo = (topicKey) => topicTabs.find(item => item.key === topicKey) || topicTabs[0];
+
+const getTopicPartition = (topicKey) => getTopicInfo(topicKey).partition;
+
 const getTopicMenuOptions = (topicKey) => {
-    const topic = topicTabs.find(item => item.key === topicKey) || topicTabs[0];
+    const topic = getTopicInfo(topicKey);
     return defaultMenuTypes.filter(item => topic.menuTypes.includes(item.menuType));
 };
 
@@ -54,46 +60,51 @@ const getInitialMenuTypeByTopic = () => {
 };
 
 export default function Home() {
-    const [listData, setData] = useState([]);
-    const [videoListData, setVideoListData] = useState([]);
-    const [codeListData, setCodeListData] = useState([]);
+    const [articleListByTopic, setArticleListByTopic] = useState({});
+    const [videoListByTopic, setVideoListByTopic] = useState({});
+    const [codeListByTopic, setCodeListByTopic] = useState({});
+    const [articleMetaByTopic, setArticleMetaByTopic] = useState({});
+    const [videoMetaByTopic, setVideoMetaByTopic] = useState({});
+    const [codeMetaByTopic, setCodeMetaByTopic] = useState({});
     const [loading, setLoading] = useState(false);
-    const [recommendListData, setRecommendList] = useState([]);
-    const [pageNum, setPageNum] = useState(1);
-    const [total, setTotal] = useState(0);
-    const [tagList, setTagList] = useState([]);
+    const [articleRecommendByTopic, setArticleRecommendByTopic] = useState({});
+    const [videoRecommendByTopic, setVideoRecommendByTopic] = useState({});
+    const [tagListByTopic, setTagListByTopic] = useState({});
     const [keywordByView, setKeywordByView] = useState({});
     const [searchedKeywords, setSearchedKeywords] = useState({});
     const [activeTopic, setActiveTopic] = useState(getInitialTopic);
     const [menuTypeByTopic, setMenuTypeByTopic] = useState(getInitialMenuTypeByTopic);
     const userInfo = useSelector(state => state.user);
-    const articleTotal = useRef({});
-    const videoTotal = useRef({});
-    const codeTotal = useRef({});
-    const articleRecommend = useRef({});
-    const videoRecommend = useRef({});
-    const codeRecommend = useRef({});
     const bus = useBus();
     const menuType = menuTypeByTopic[activeTopic] || 1;
     const activeViewKey = `${activeTopic}-${menuType}`;
     const keyword = keywordByView[activeViewKey] || '';
-    const activeTopicInfo = topicTabs.find(item => item.key === activeTopic) || topicTabs[0];
+    const activeTopicInfo = getTopicInfo(activeTopic);
     const activeMenuOptions = getTopicMenuOptions(activeTopic);
+    const activeArticleList = articleListByTopic[activeTopic] || [];
+    const activeVideoList = videoListByTopic[activeTopic] || [];
+    const activeCodeList = codeListByTopic[activeTopic] || [];
+    const activeMeta = menuType == 1
+        ? articleMetaByTopic[activeTopic]
+        : menuType == 2
+            ? videoMetaByTopic[activeTopic]
+            : codeMetaByTopic[activeTopic];
+    const total = activeMeta?.total || 0;
+    const pageNum = activeMeta?.pageNum || 1;
+    const recommendListData = menuType == 1
+        ? articleRecommendByTopic[activeTopic] || []
+        : videoRecommendByTopic[activeTopic] || [];
+    const activeTagList = tagListByTopic[activeTopic] || [];
 
     useEffect(() => {
         initSocket();
 
-        Promise.allSettled([getRecommendArticleList(), getRecommendVideoList(), getArticleList(), getVideoList(), getCodeTopicList(), getTagList()])
-                .then(() => {
-                    console.log('加载数据完成');
-                    const initialTopic = getInitialTopic();
-                    const initialMenuMap = getInitialMenuTypeByTopic();
-                    const initialMenuType = initialTopic === 'chatter' && initialMenuMap[initialTopic] == 3 ? 1 : initialMenuMap[initialTopic];
-                    setActiveTopic(initialTopic);
-                    setMenuTypeByTopic({ ...initialMenuMap, [initialTopic]: initialMenuType });
-                    syncMenuMeta(initialMenuType);
-                })
-                .catch((err) => console.error(err));
+        const initialTopic = getInitialTopic();
+        const initialMenuMap = getInitialMenuTypeByTopic();
+        const initialMenuType = initialTopic === 'chatter' && initialMenuMap[initialTopic] == 3 ? 1 : initialMenuMap[initialTopic];
+        setActiveTopic(initialTopic);
+        setMenuTypeByTopic({ ...initialMenuMap, [initialTopic]: initialMenuType });
+        loadInitialData();
     }, []);
 
     const initSocket = () => {
@@ -117,12 +128,11 @@ export default function Home() {
     }
 
     // 获取tag列表
-    const getTagList = async () => {
+    const getTagList = async (topicKey = activeTopic) => {
         try {
-            const res = await request('/getTagList');
+            const res = await request('/getTagList', { data: { partition: getTopicPartition(topicKey) } });
             if (res?.data) {
-                console.log(res.data);
-                setTagList(res.data);
+                setTagListByTopic(prev => ({ ...prev, [topicKey]: res.data }));
             }
         } catch (err) {
             console.error(err);
@@ -130,74 +140,81 @@ export default function Home() {
     }
 
     //  获取文章列表
-    const getArticleList = async (pageNum = 1, pageSize = 10, keyword = '') => {
-        let obj = { pageNum, pageSize, keyword };
-        setLoading(true);
+    const getArticleList = async (pageNum = 1, pageSize = 10, keyword = '', topicKey = activeTopic, showLoading = true) => {
+        let obj = { pageNum, pageSize, keyword, partition: getTopicPartition(topicKey) };
+        if (showLoading) setLoading(true);
         try {
             const res = await request('/getArticleList', { data: obj });
             if (res?.data.rows) {
-                setData([...res?.data.rows]);
-                // setArticleTotal(res?.data.count);
-                articleTotal.current.total = res?.data.count;
-                articleTotal.current.pageNum = res?.data.pageNum;
-                setTotal(res?.data.count);
-                setPageNum(res?.data.pageNum);
-                setLoading(false);
+                setArticleListByTopic(prev => ({ ...prev, [topicKey]: [...res?.data.rows] }));
+                setArticleMetaByTopic(prev => ({
+                    ...prev,
+                    [topicKey]: {
+                        total: res?.data.count,
+                        pageNum: res?.data.pageNum,
+                    }
+                }));
             }
         } catch (err) {
-            setLoading(false);
             console.error(err);
+        } finally {
+            if (showLoading) setLoading(false);
         }
     }
 
     //  获取代码题目列表
-    const getCodeTopicList = async (pageNum = 1, pageSize = 10, keyword = '') => {
-        let obj = { pageNum, pageSize, keyword };
-        setLoading(true);
+    const getCodeTopicList = async (pageNum = 1, pageSize = 10, keyword = '', topicKey = activeTopic, showLoading = true) => {
+        let obj = { pageNum, pageSize, keyword, partition: getTopicPartition(topicKey) };
+        if (showLoading) setLoading(true);
         try {
             const res = await request('/getCodeTopicList', { data: obj });
             if (res?.data.rows) {
-                setCodeListData([...res?.data.rows]);
-                codeTotal.current.total = res?.data.count;
-                codeTotal.current.pageNum = res?.data.pageNum;
-                setTotal(res?.data.count);
-                setPageNum(res?.data.pageNum);
-                setLoading(false);
+                setCodeListByTopic(prev => ({ ...prev, [topicKey]: [...res?.data.rows] }));
+                setCodeMetaByTopic(prev => ({
+                    ...prev,
+                    [topicKey]: {
+                        total: res?.data.count,
+                        pageNum: res?.data.pageNum,
+                    }
+                }));
             }
         } catch (err) {
-            setLoading(false);
             console.error(err);
+        } finally {
+            if (showLoading) setLoading(false);
         }
     }
 
     // 获取视频列表
-    const getVideoList = async (pageNum = 1, pageSize = 10, keyword = '') => {
-        let obj = { pageNum, pageSize, keyword };
-        setLoading(true);
+    const getVideoList = async (pageNum = 1, pageSize = 10, keyword = '', topicKey = activeTopic, showLoading = true) => {
+        let obj = { pageNum, pageSize, keyword, partition: getTopicPartition(topicKey) };
+        if (showLoading) setLoading(true);
         try {
             const res = await request('/getVideoList', { data: obj });
             if (res?.data.rows) {
-                setVideoListData([...res?.data.rows]);
-                // setVideoTotal(res?.data.count);
-                videoTotal.current.total = res?.data.count;
-                videoTotal.current.pageNum = res?.data.pageNum;
-                setTotal(res?.data.count);
-                setPageNum(res?.data.pageNum);
-                setLoading(false);
+                setVideoListByTopic(prev => ({ ...prev, [topicKey]: [...res?.data.rows] }));
+                setVideoMetaByTopic(prev => ({
+                    ...prev,
+                    [topicKey]: {
+                        total: res?.data.count,
+                        pageNum: res?.data.pageNum,
+                    }
+                }));
             }
         } catch (err) {
-            setLoading(false);
             console.error(err);
+        } finally {
+            if (showLoading) setLoading(false);
         }
     }
 
     //  获取今日推荐文章列表
-    const getRecommendArticleList = async (pageNum = 1, pageSize = 10, keyword = '') => {
-        let obj = { pageNum, pageSize, keyword };
+    const getRecommendArticleList = async (pageNum = 1, pageSize = 10, keyword = '', topicKey = activeTopic) => {
+        let obj = { pageNum, pageSize, keyword, partition: getTopicPartition(topicKey) };
         try {
             const res = await request('/getRecommendArticleList', { data: obj });
             if (res?.data.rows) {
-                articleRecommend.current = res?.data.rows;
+                setArticleRecommendByTopic(prev => ({ ...prev, [topicKey]: res?.data.rows }));
             }
         } catch (err) {
             console.error(err);
@@ -205,42 +222,55 @@ export default function Home() {
     }
 
     //  获取今日推荐视频列表
-    const getRecommendVideoList = async (pageNum = 1, pageSize = 10, keyword = '') => {
-        let obj = { pageNum, pageSize, keyword };
+    const getRecommendVideoList = async (pageNum = 1, pageSize = 10, keyword = '', topicKey = activeTopic) => {
+        let obj = { pageNum, pageSize, keyword, partition: getTopicPartition(topicKey) };
         try {
             const res = await request('/getRecommendVideoList', { data: obj });
             if (res?.data.rows) {
-                videoRecommend.current = res?.data.rows;
+                setVideoRecommendByTopic(prev => ({ ...prev, [topicKey]: res?.data.rows }));
             }
         } catch (err) {
             console.error(err);
         }
     }
 
-    const syncMenuMeta = (type) => {
-        if (type == 1) {
-            setTotal(articleTotal.current.total);
-            setPageNum(articleTotal.current.pageNum);
-            setRecommendList(articleRecommend.current);
-        } else if (type == 2) {
-            setTotal(videoTotal.current.total);
-            setPageNum(videoTotal.current.pageNum);
-            setRecommendList(videoRecommend.current);
-        } else {
-            setTotal(codeTotal.current.total);
-            setPageNum(codeTotal.current.pageNum);
-            setRecommendList(codeRecommend.current);
+    const loadInitialData = async () => {
+        setLoading(true);
+        const tasks = topicTabs.flatMap((topic) => {
+            const topicTasks = [
+                getRecommendArticleList(1, 10, '', topic.key),
+                getRecommendVideoList(1, 10, '', topic.key),
+                getArticleList(1, 10, '', topic.key, false),
+                getVideoList(1, 10, '', topic.key, false),
+                getTagList(topic.key),
+            ];
+            if (topic.menuTypes.includes(3)) {
+                topicTasks.push(getCodeTopicList(1, 10, '', topic.key, false));
+            }
+            return topicTasks;
+        });
+
+        try {
+            await Promise.allSettled(tasks);
+            console.log('加载数据完成');
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
         }
     }
 
-    const loadMenuData = (type, page = 1, nextKeyword = '') => {
+    const loadMenuData = (type, page = 1, nextKeyword = '', topicKey = activeTopic) => {
         if (type == 1) {
-            getArticleList(page, 10, nextKeyword);
+            getArticleList(page, 10, nextKeyword, topicKey);
+            getRecommendArticleList(1, 10, '', topicKey);
         } else if (type == 2) {
-            getVideoList(page, 10, nextKeyword);
+            getVideoList(page, 10, nextKeyword, topicKey);
+            getRecommendVideoList(1, 10, '', topicKey);
         } else {
-            getCodeTopicList(page, 10, nextKeyword);
+            getCodeTopicList(page, 10, nextKeyword, topicKey);
         }
+        getTagList(topicKey);
     }
 
     //  点击顶部标签页
@@ -252,8 +282,7 @@ export default function Home() {
         const nextMenuType = nextTopic.menuTypes.includes(currentTopicMenuType) ? currentTopicMenuType : 1;
         setActiveTopic(topicKey);
         setMenuTypeByTopic(prev => ({ ...prev, [topicKey]: nextMenuType }));
-        syncMenuMeta(nextMenuType);
-        loadMenuData(nextMenuType, 1, keywordByView[`${topicKey}-${nextMenuType}`] || '');
+        loadMenuData(nextMenuType, 1, keywordByView[`${topicKey}-${nextMenuType}`] || '', topicKey);
         localStorage.setItem('lastHomeTopic', topicKey);
     }
 
@@ -261,23 +290,16 @@ export default function Home() {
     const clickMenu = (type) => {
         if (!activeTopicInfo.menuTypes.includes(type)) return;
 
-        syncMenuMeta(type);
         const nextMenuTypeByTopic = { ...menuTypeByTopic, [activeTopic]: type };
         setMenuTypeByTopic(nextMenuTypeByTopic);
-        loadMenuData(type, 1, keywordByView[`${activeTopic}-${type}`] || '');
+        loadMenuData(type, 1, keywordByView[`${activeTopic}-${type}`] || '', activeTopic);
         localStorage.setItem('lastUseMenuType', type);
         localStorage.setItem('lastHomeMenuTypeByTopic', JSON.stringify(nextMenuTypeByTopic));
     }
 
     //  翻页
     const changePage = (page) => {
-        if (menuType == 1) {
-            getArticleList(page, 10, keyword);
-        } else if (menuType == 2) {
-            getVideoList(page, 10, keyword);
-        } else {
-            getCodeTopicList(page, 10, keyword);
-        }
+        loadMenuData(menuType, page, keyword, activeTopic);
         window.scrollTo({
             top: 0,
             left: 0,
@@ -288,13 +310,7 @@ export default function Home() {
     const handlePressEnter = () => {
         const nextKeyword = keyword.trim();
         setSearchedKeywords(prev => ({ ...prev, [activeViewKey]: nextKeyword }));
-        if (menuType == 1) {
-            getArticleList(1, 10, nextKeyword);
-        } else if (menuType == 2) {
-            getVideoList(1, 10, nextKeyword);
-        } else {
-            getCodeTopicList(1, 10, nextKeyword);
-        }
+        loadMenuData(menuType, 1, nextKeyword, activeTopic);
         window.scrollTo({
             top: 0,
             left: 0,
@@ -309,29 +325,29 @@ export default function Home() {
     }
 
     const renderHomeList = () => {
-        const currentList = menuType == 1 ? listData : menuType == 2 ? videoListData : codeListData;
+        const currentList = menuType == 1 ? activeArticleList : menuType == 2 ? activeVideoList : activeCodeList;
         const activeSearchedKeyword = searchedKeywords[activeViewKey] || '';
 
-        if (!loading && activeSearchedKeyword && currentList.length === 0) {
+        if (!loading && currentList.length === 0) {
             return (
                 <div className='home_empty_state'>
                     <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description={<span>没有搜索到“{activeSearchedKeyword}”对应内容</span>}
+                        description={<span>{activeSearchedKeyword ? `没有搜索到“${activeSearchedKeyword}”对应内容` : '暂时没有内容'}</span>}
                     />
                 </div>
             )
         }
 
         if (menuType == 1) {
-            return listData.map((item) => <ArticleCard articleInfo={item} userInfo={userInfo} key={item.id} />);
+            return activeArticleList.map((item) => <ArticleCard articleInfo={item} userInfo={userInfo} key={item.id} />);
         }
 
         if (menuType == 2) {
-            return videoListData.map((item) => <VideoCard videoInfo={item} userInfo={userInfo} key={item.id} />);
+            return activeVideoList.map((item) => <VideoCard videoInfo={item} userInfo={userInfo} key={item.id} />);
         }
 
-        return codeListData.map((item) => <CodeCard codeInfo={item} userInfo={userInfo} key={item.id} />);
+        return activeCodeList.map((item) => <CodeCard codeInfo={item} userInfo={userInfo} key={item.id} />);
     }
 
     return (
@@ -351,7 +367,7 @@ export default function Home() {
                     </div>
                     <div className='home_under_content'>
                         <div className='home_left_content'>
-                            <AlanCard articleTotal={articleTotal.current.total} videoTotal={videoTotal.current.total}></AlanCard>
+                            <AlanCard articleTotal={articleMetaByTopic[activeTopic]?.total} videoTotal={videoMetaByTopic[activeTopic]?.total}></AlanCard>
                             <div className='home_search'>
                                 <Input
                                     placeholder={getSearchPlaceholder()}
@@ -391,7 +407,7 @@ export default function Home() {
                             menuType !== 3 ?  (
                                 <div className='home_right_content'>
                                     <Recommend type={menuType == 1 ? 1 : 3} articleList={recommendListData}></Recommend>
-                                    <TagCard tagList={tagList}></TagCard>
+                                    <TagCard tagList={activeTagList}></TagCard>
                                 </div>
                             ) : null
                         }

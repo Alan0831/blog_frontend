@@ -56,11 +56,6 @@ function CommentItem(props) {
         onReply({ commentId, replyId });
     };
 
-    const cancelReply = () => {
-        setValue('');
-        onReply({ commentId: 0, replyId: 0 });
-    };
-
     const submitReply = async () => {
         if (!trimmedValue) {
             message.warning('回复内容不能为空');
@@ -96,12 +91,6 @@ function CommentItem(props) {
             message.error(getErrorMessage(err?.response, '回复失败'));
         } finally {
             setSubmitting(false);
-        }
-    };
-
-    const handleReplyKeyDown = (e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            submitReply();
         }
     };
 
@@ -167,13 +156,17 @@ function CommentItem(props) {
                             placeholder={`回复 @${authorName}`}
                             value={value}
                             onChange={(e) => setValue(e.target.value)}
-                            onKeyDown={handleReplyKeyDown}
                             autoFocus
                         />
                         <div className='reply-form-controls'>
                             <span>{value.length}/{REPLY_LIMIT}</span>
-                            <Button onClick={cancelReply}>取消</Button>
-                            <Button icon={<SendOutlined />} type='primary' loading={submitting} disabled={!trimmedValue} onClick={submitReply}>
+                            <Button
+                                className='comment-submit-button'
+                                icon={<SendOutlined />}
+                                type='primary'
+                                loading={submitting}
+                                onClick={submitReply}
+                            >
                                 发布回复
                             </Button>
                         </div>

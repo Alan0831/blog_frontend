@@ -1,4 +1,4 @@
-import { Button, message, Avatar, Dropdown, Badge } from 'antd'
+import { message, Dropdown, Badge } from 'antd'
 import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import AppAvatar from '../avatar';
@@ -6,10 +6,9 @@ import { useDispatch } from 'react-redux'
 import { useListener } from '../../hooks/useBus';
 import { get } from '../../utils/storage';
 import { loginout } from '../../redux/user/actions'
-import { FileTextOutlined, IdcardOutlined, KeyOutlined, NotificationOutlined, PaperClipOutlined, VideoCameraOutlined } from '@ant-design/icons';
+import { FileTextOutlined, IdcardOutlined, KeyOutlined, LogoutOutlined, NotificationOutlined, PaperClipOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { useLocation } from 'react-router-dom';
 const xuehua = require('../../../public/icon/xuehua.svg');
-const shengdanwa = require('../../../public/icon/shengdanwa.svg');
 const shengdanreyin = require('../../../public/icon/shengdanreyin.svg');
 const xiaolu = require('../../../public/icon/xiaolu.svg');
 const xiaoxiong = require('../../../public/icon/xiaoxiong.svg');
@@ -85,6 +84,18 @@ function Header() {
             ),
             icon: <PaperClipOutlined />,
         },
+        {
+            type: 'divider',
+        },
+        {
+            key: 'logout',
+            label: (
+                <div onClick={() => exit()}>
+                    退出
+                </div>
+            ),
+            icon: <LogoutOutlined />,
+        },
     ];
     const headerPartList = [
         {
@@ -96,11 +107,6 @@ function Header() {
             title: '上传视频',
             img: shengdanreyin,
             cb: () => navigate('/uploadVideo')
-        },
-        {
-            title: '退出',
-            img: shengdanwa,
-            cb: () => exit()
         }
     ];
     const headerPartListWithoutLogin = [

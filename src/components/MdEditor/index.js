@@ -9,6 +9,7 @@ import {
   HighlightOutlined,
   LoadingOutlined,
   LockOutlined,
+  PartitionOutlined,
   LeftOutlined,
   PlusOutlined,
   RightOutlined,
@@ -61,6 +62,11 @@ const visibleTypeList = [
   { value: 3, label: '仅自己可见' },
 ];
 
+const partitionOptions = [
+  { value: 'codeStudy', label: '学习' },
+  { value: 'chatter', label: '杂谈' },
+];
+
 function getPlainTextFromHtml(html) {
   const box = document.createElement('div');
   box.innerHTML = html || '';
@@ -90,6 +96,7 @@ function MdEditor(props) {
   const [oldArticleClass, setOldArticleClass] = useState(-1);
   const [articleClassOptions, setArticleClassOptions] = useState([]);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [partition, setPartition] = useState('codeStudy');
   const [visibleType, setVisibleType] = useState(1);
   const [password, setPassword] = useState('');
   const [inputVisible, setInputVisible] = useState(false);
@@ -143,6 +150,7 @@ function MdEditor(props) {
     setArticleClass(props.articleInfo.articleclassId || undefined);
     setOldArticleClass(props.articleInfo.articleclassId || -1);
     setSelectedTags(parseTagList(props.articleInfo.tagList));
+    setPartition(props.articleInfo.partition || 'codeStudy');
     setVisibleType(props.articleInfo.visibleType || 1);
     setPassword('');
     setImageUrl(props.articleInfo.articleCover || '');
@@ -239,6 +247,7 @@ function MdEditor(props) {
       content,
       authorId,
       tagList: selectedTags,
+      partition,
       visibleType,
     };
 
@@ -496,6 +505,19 @@ function MdEditor(props) {
             </div>
             <span className='field-hint'>最多 {MAX_TAG_COUNT} 个标签，方便读者快速找到你。</span>
           </div>
+
+          <label className='field-block'>
+            <span className='field-label'>
+              <PartitionOutlined />
+              内容分区
+            </span>
+            <Select
+              onChange={value => setPartition(value)}
+              value={partition}
+              className='soft-select'
+              options={partitionOptions}
+            />
+          </label>
 
           <label className='field-block'>
             <span className='field-label'>

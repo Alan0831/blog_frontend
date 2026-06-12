@@ -105,14 +105,20 @@
   .reply-form-controls {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 12px;
     margin-top: 10px;
   }
 
-  .composer-tip,
+  .composer-footer {
+    justify-content: flex-end;
+  }
+
+  .reply-form-controls {
+    justify-content: space-between;
+  }
+
   .comment-length,
-  .reply-form-controls span {
+  .reply-form-controls > span {
     color: var(--color-muted);
     font-size: 12px;
   }
@@ -120,7 +126,63 @@
   .composer-actions {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 10px;
+    width: 100%;
+  }
+
+  .comment-submit-button.ant-btn {
+    min-width: 98px;
+    height: 34px;
+    border-radius: 999px;
+    font-weight: 800;
+    transition:
+      transform 220ms var(--ease-smooth),
+      box-shadow 220ms var(--ease-smooth),
+      border-color 220ms var(--ease-smooth),
+      background 220ms var(--ease-smooth);
+
+    &:not([disabled]):active {
+      transform: translate3d(0, 1px, 0) scale(0.98);
+    }
+
+    .anticon {
+      color: currentColor;
+    }
+
+    span:not(.anticon) {
+      color: currentColor;
+    }
+  }
+
+  .comment-submit-button.ant-btn-primary {
+    border-color: #23859a !important;
+    color: #fff !important;
+    background: linear-gradient(135deg, #2f8fa3 0%, #c35f87 100%) !important;
+    box-shadow: 0 10px 22px rgba(47, 143, 163, 0.24);
+
+    &:hover,
+    &:focus {
+      border-color: #1f7d91 !important;
+      color: #fff !important;
+      background: linear-gradient(135deg, #287f94 0%, #b8547c 100%) !important;
+      box-shadow: 0 12px 26px rgba(47, 143, 163, 0.3);
+    }
+
+  }
+
+  .comment-submit-button:not(.ant-btn-primary) {
+    border-color: rgba(43, 138, 160, 0.26);
+    color: #247d92;
+    background: rgba(255, 255, 255, 0.86);
+
+    &:hover,
+    &:focus {
+      border-color: rgba(43, 138, 160, 0.46);
+      color: #1f7488;
+      background: #fff;
+      box-shadow: 0 8px 18px rgba(43, 138, 160, 0.12);
+    }
   }
 
   .comment-list {
@@ -278,7 +340,7 @@
 
     .comment-user,
     .composer-actions,
-    .reply-form-controls .ant-btn {
+    .reply-form-controls .comment-submit-button {
       width: 100%;
     }
 

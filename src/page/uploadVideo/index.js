@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './index.less';
 import { request } from '../../utils/request';
-import { Button, Input, message, Upload, Progress } from 'antd';
+import { Button, Input, message, Upload, Progress, Select } from 'antd';
 import { uploadFileChunk } from '../../utils/uploadFile';
 import { getErrorMessage } from '../../utils/errorMessage';
 import { useSelector } from 'react-redux';
@@ -11,6 +11,7 @@ import {
   CloudUploadOutlined,
   FileImageOutlined,
   LoadingOutlined,
+  PartitionOutlined,
   PlayCircleOutlined,
   SendOutlined,
   VideoCameraAddOutlined,
@@ -21,6 +22,11 @@ import bilan from '../../assets/images/bilan.jpeg';
 const MAX_VIDEO_SIZE = 200;
 const MAX_COVER_SIZE = 2;
 
+const partitionOptions = [
+  { value: 'codeStudy', label: '学习' },
+  { value: 'chatter', label: '杂谈' },
+];
+
 function UploadVideo() {
   const [isEdit, setIsEdit] = useState(false);
   const [pageLoading, setPageLoading] = useState(false);
@@ -28,11 +34,15 @@ function UploadVideo() {
   const [videoUploading, setVideoUploading] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
   const [title, setTitle] = useState('');
+  const [partition, setPartition] = useState('codeStudy');
   const [videoId, setVideoId] = useState('');
   const [content, setContent] = useState('');
   const [videoUrl, setVideoUrl] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [percent, setPercent] = useState(0);
+  const [videoProcessStatus, setVideoProcessStatus] = useState('idle');
+  const [videoProcessMessage, setVideoProcessMessage] = useState('等待上传视频文件');
+  const [videoFileHash, setVideoFileHash] = useState('');
   const [file, setFile] = useState([]);
   const [fileImage, setFileImage] = useState([]);
   const [originalVideoInfo, setOriginalVideoInfo] = useState({ videoUrl: '', poster: '' });
@@ -40,13 +50,24 @@ function UploadVideo() {
   const location = useLocation();
   const navigate = useNavigate();
   const userInfo = useSelector(state => state.user);
+  const uploadAliveRef = useRef(true);
+
+  useEffect(() => () => {
+    // 上传/轮询可能持续较久，页面卸载后不再回写 React 状态
+    uploadAliveRef.current = false;
+  }, []);
+
+  const isVideoProcessing = videoProcessStatus === 'processing';
+  const isVideoFailed = videoProcessStatus === 'failed';
+  const isVideoReady = Boolean(videoUrl) && !isVideoProcessing && !isVideoFailed;
 
   const videoStats = useMemo(() => ({
     titleReady: Boolean(title.trim()),
-    videoReady: Boolean(videoUrl),
+    videoReady: isVideoReady,
     coverReady: Boolean(imageUrl),
     descCount: content.trim().length,
-  }), [content, imageUrl, title, videoUrl]);
+    processText: videoUploading ? '上传中' : isVideoProcessing ? '处理中' : isVideoFailed ? '处理失败' : isVideoReady ? '已完成' : '待上传',
+  }), [content, imageUrl, isVideoFailed, isVideoProcessing, isVideoReady, title, videoUploading]);
 
   useEffect(() => {
     const editVideoId = location.state?.editVideoId;
@@ -79,6 +100,7 @@ function UploadVideo() {
       if (res.status === 200) {
         const data = res.data || {};
         setTitle(data.title || '');
+        setPartition(data.partition || 'codeStudy');
         setImageUrl(data.poster || '');
         setVideoUrl(data.videoUrl || '');
         setOriginalVideoInfo({
@@ -87,6 +109,8 @@ function UploadVideo() {
         });
         setContent(data.content || '');
         setPercent(data.videoUrl ? 100 : 0);
+        setVideoProcessStatus(data.videoUrl ? 'success' : 'idle');
+        setVideoProcessMessage(data.videoUrl ? '视频已处理完成，可以保存修改' : '等待上传视频文件');
         setFile(data.videoUrl ? [{
           uid: String(data.id || id),
           name: data.title || '已上传视频',
@@ -127,6 +151,14 @@ function UploadVideo() {
       message.warning('请先上传视频文件');
       return false;
     }
+    if (isVideoProcessing) {
+      message.warning('视频仍在后台处理中，请等待完成后再发布');
+      return false;
+    }
+    if (isVideoFailed) {
+      message.warning('视频处理失败，请重新上传后再发布');
+      return false;
+    }
     if (!content.trim()) {
       message.warning('请输入视频描述');
       return false;
@@ -135,13 +167,14 @@ function UploadVideo() {
   };
 
   const submitVideo = async () => {
-    if (submitting || videoUploading || !validateForm()) return;
+    if (submitting || videoUploading || isVideoProcessing || !validateForm()) return;
 
     const { userId: authorId } = userInfo;
     const payload = {
       title: title.trim(),
       content: content.trim(),
       authorId,
+      partition,
       visibleType: 1,
     };
     if (isEdit) {
@@ -195,25 +228,29 @@ function UploadVideo() {
 
   const uploadVideo = async (config) => {
     if (!userInfo.userId) {
-      message.warning('请先登录后再上传');
+      message.warning('请先登录');
       config.onError?.(new Error('missing user'));
       return;
     }
 
     const currentFile = config.file;
     setVideoUploading(true);
+    setVideoProcessStatus('uploading');
+    setVideoProcessMessage('正在上传视频分片');
+    setVideoFileHash('');
     setPercent(1);
     setFile([{
       uid: currentFile.uid || String(Date.now()),
       name: currentFile.name,
       status: 'uploading',
-      originFileObj: currentFile,
+      url: '',
     }]);
 
     uploadFileChunk(
       currentFile,
       userInfo.userId,
-      (url) => {
+      (url, processInfo = {}) => {
+        if (!uploadAliveRef.current) return;
         const uploadedFile = {
           uid: currentFile.uid || String(Date.now()),
           name: currentFile.name,
@@ -222,9 +259,12 @@ function UploadVideo() {
         };
         setFile([uploadedFile]);
         setVideoUrl(url);
+        setVideoFileHash(processInfo.fileHash || '');
+        setVideoProcessStatus('success');
+        setVideoProcessMessage(processInfo.message || '视频已处理完成，可以发布');
         setPercent(100);
         setVideoUploading(false);
-        config.onSuccess?.({ url });
+        config.onSuccess?.({ url, processInfo });
       },
       (error) => {
         setFile([{
@@ -234,12 +274,24 @@ function UploadVideo() {
           url: '',
         }]);
         setVideoUrl('');
+        setVideoProcessStatus('failed');
+        setVideoProcessMessage(error?.message || '视频上传或处理失败');
         setVideoUploading(false);
         config.onError?.(new Error('upload failed'));
-        message.error(error?.message || '视频上传失败，请稍后再试');
+        message.error(error?.message || '视频上传或处理失败');
       },
-      (nextPercent) => {
-        setPercent(Math.max(1, Math.round(nextPercent)));
+      (nextPercent, processInfo = {}) => {
+        if (!uploadAliveRef.current) return;
+        // 80% 以后是后端切片/转码阶段，保持进度条活跃并更新状态文案
+        const nextValue = Math.max(1, Math.round(nextPercent));
+        setPercent(nextValue);
+        if (processInfo.fileHash) setVideoFileHash(processInfo.fileHash);
+        if (processInfo.status) setVideoProcessStatus(processInfo.status);
+        if (processInfo.message) setVideoProcessMessage(processInfo.message);
+        if (!processInfo.status && nextValue >= 80 && nextValue < 100) {
+          setVideoProcessStatus('processing');
+          setVideoProcessMessage('视频正在后台切片');
+        }
       },
     ).catch((error) => {
       setFile([{
@@ -249,12 +301,13 @@ function UploadVideo() {
         url: '',
       }]);
       setVideoUrl('');
+      setVideoProcessStatus('failed');
+      setVideoProcessMessage(error?.message || '视频上传或处理失败');
       setVideoUploading(false);
       config.onError?.(error || new Error('upload failed'));
-      message.error(error?.message || '视频上传失败，请稍后再试');
+      message.error(error?.message || '视频上传或处理失败');
     });
   };
-
   const uploadCover = async (config) => {
     const formData = new FormData();
     formData.append('file', config.file);
@@ -296,6 +349,9 @@ function UploadVideo() {
   const removeVideo = () => {
     setFile([]);
     setVideoUrl('');
+    setVideoFileHash('');
+    setVideoProcessStatus('idle');
+    setVideoProcessMessage('等待上传视频文件');
     setPercent(0);
   };
 
@@ -347,6 +403,19 @@ function UploadVideo() {
               />
             </label>
 
+            <label className='video-field-block video-partition-field'>
+              <span className='video-field-label'>
+                <PartitionOutlined />
+                内容分区
+              </span>
+              <Select
+                value={partition}
+                onChange={value => setPartition(value)}
+                className='video-soft-select'
+                options={partitionOptions}
+              />
+            </label>
+
             <div className='video-field-block video-upload-field'>
               <span className='video-field-label'>
                 <CloudUploadOutlined />
@@ -365,17 +434,22 @@ function UploadVideo() {
                   onChange={handleVideoChange}
                   onRemove={removeVideo}
                 >
-                  <Button className='upload-action' icon={<CloudUploadOutlined />} disabled={videoUploading}>
-                    {videoUploading ? '正在上传' : videoUrl ? '重新上传视频' : '上传视频'}
+                  <Button className='upload-action' icon={<CloudUploadOutlined />} disabled={videoUploading || isVideoProcessing}>
+                    {isVideoProcessing ? '视频处理中' : videoUploading ? '正在上传' : videoUrl ? '重新上传视频' : '上传视频'}
                   </Button>
                 </Upload>
                 {percent > 0 ? (
                   <Progress
                     percent={percent}
-                    status={videoUploading ? 'active' : videoUrl ? 'success' : 'normal'}
+                    status={isVideoFailed ? 'exception' : (videoUploading || isVideoProcessing) ? 'active' : videoUrl ? 'success' : 'normal'}
                     strokeColor={{ '0%': '#d8688a', '100%': '#6e9fca' }}
                   />
                 ) : null}
+                <div className={`video-process-note is-${videoProcessStatus}`}>
+                  {/* 这里展示后端异步切片进度，避免用户在处理中直接提交 */}
+                  <span>{videoProcessMessage}</span>
+                  {videoFileHash ? <em>{videoFileHash}</em> : null}
+                </div>
               </div>
               <span className='video-field-hint'>支持 mp4，单个文件不超过 {MAX_VIDEO_SIZE}M。</span>
             </div>
@@ -434,7 +508,7 @@ function UploadVideo() {
                 className='video-submit-action'
                 icon={<SendOutlined />}
                 loading={submitting || pageLoading}
-                disabled={pageLoading || videoUploading}
+                disabled={pageLoading || videoUploading || isVideoProcessing || isVideoFailed}
                 onClick={submitVideo}
               >
                 {isEdit ? '保存修改' : '发布视频'}
@@ -451,7 +525,7 @@ function UploadVideo() {
             </div>
             <div className='video-side-copy'>
               <span className='video-side-label'>上传状态</span>
-              <strong>{videoStats.videoReady ? '片源已经就位' : '等待第一支视频'}</strong>
+              <strong>{videoStats.videoReady ? '片源已经就位' : isVideoProcessing ? '视频正在处理' : isVideoFailed ? '处理失败' : '等待第一支视频'}</strong>
               <p>封面负责吸引目光，描述负责留住想看的人。</p>
             </div>
             <div className='video-stat-list'>
@@ -460,8 +534,8 @@ function UploadVideo() {
                 <p>标题状态</p>
               </div>
               <div>
-                <span>{videoStats.videoReady ? `${percent}%` : '未上传'}</span>
-                <p>视频进度</p>
+                <span>{videoStats.videoReady || videoUploading || isVideoProcessing || isVideoFailed ? `${percent}%` : '未上传'}</span>
+                <p>{videoStats.processText}</p>
               </div>
               <div>
                 <span>{videoStats.coverReady ? '已设置' : '未设置'}</span>

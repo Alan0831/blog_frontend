@@ -257,6 +257,27 @@
   }
 }
 
+.video-partition-field {
+  max-width: 320px;
+}
+
+.video-soft-select {
+  width: 100%;
+
+  .ant-select-selector {
+    height: 40px !important;
+    min-height: 40px;
+    border-radius: 16px !important;
+    border-color: rgba(218, 173, 190, 0.48) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+  }
+
+  .ant-select-selection-item,
+  .ant-select-selection-placeholder {
+    line-height: 38px !important;
+  }
+}
+
 .upload-zone {
   display: grid;
   gap: 12px;
@@ -270,6 +291,51 @@
   .ant-progress-text {
     color: #7b5c6b;
     font-weight: 700;
+  }
+}
+
+.video-process-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  color: #806373;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(226, 177, 195, 0.34);
+  font-size: 12px;
+  font-weight: 700;
+
+  // 处理状态按上传/转码/成功/失败分色，用户可以快速判断是否能发布
+  &.is-processing,
+  &.is-uploading {
+    color: #557b9e;
+    background: rgba(235, 247, 255, 0.76);
+    border-color: rgba(117, 174, 222, 0.34);
+  }
+
+  &.is-success {
+    color: #4f7f6a;
+    background: rgba(238, 250, 243, 0.82);
+    border-color: rgba(110, 159, 128, 0.34);
+  }
+
+  &.is-failed {
+    color: #b45465;
+    background: rgba(255, 240, 242, 0.84);
+    border-color: rgba(216, 104, 138, 0.36);
+  }
+
+  em {
+    max-width: 100%;
+    overflow: hidden;
+    color: #9b8793;
+    font-style: normal;
+    font-family: Consolas, Monaco, monospace;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 }
 

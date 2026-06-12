@@ -1,16 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import './index.less'
-import { Divider, Spin, message, BackTop } from 'antd'
+import './index.less';
+import { BackTop, Button, Empty, Spin, Tag, message } from 'antd';
 import Discuss from '../../components/Discuss';
+import Recommend from '../../components/Recommend';
 import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
-import { EditOutlined, EyeOutlined, CommentOutlined, TagOutlined, StarOutlined, StarTwoTone } from '@ant-design/icons';
-import { calcCommentsCount, normalizeComments } from '../../utils';
+import {
+    CalendarOutlined,
+    CommentOutlined,
+    EyeOutlined,
+    PlayCircleOutlined,
+    StarOutlined,
+    StarTwoTone,
+    VideoCameraOutlined,
+} from '@ant-design/icons';
+import { calcCommentsCount, normalizeComments, parseMaybeJsonArray } from '../../utils';
 import 'react-quill/dist/quill.snow.css';
-import Director from '../../components/director';
-import videojs from "video.js";
-import "video.js/dist/video-js.min.css";
+import videojs from 'video.js';
+import 'video.js/dist/video-js.min.css';
+import bilan from '../../assets/images/bilan.jpeg';
+
+const getVideoSourceType = (url = '') => {
+    const normalizedUrl = url.split('?')[0].toLowerCase();
+    if (normalizedUrl.includes('.m3u8')) return 'application/x-mpegURL';
+    if (normalizedUrl.includes('.mp4')) return 'video/mp4';
+    return '';
+};
 
 /**
  * 视频内容
@@ -18,42 +34,74 @@ import "video.js/dist/video-js.min.css";
 function Video() {
     const { id } = useParams();
     const [loading, setLoading] = useState(false);
-    // const [videoUrl, setVideoUrl] = useState('');
+    const [collecting, setCollecting] = useState(false);
+    const [playerError, setPlayerError] = useState(false);
+    const [recommendVideoListData, setRecommendVideoList] = useState([]);
     const [videoInfo, setVideoInfo] = useState({
         title: '',
         content: '',
         createdAt: '',
         comments: [],
         viewCount: 0,
-        goodCount: 0,
+        collectionCount: 0,
+        isCollected: false,
         tagList: '',
+        poster: '',
+        videoUrl: '',
+        sourceType: '',
     });
-    const videoRef = useRef(null);
+    const playerRef = useRef(null);
+    const videoElementRef = useRef(null);
     const userInfo = useSelector(state => state.user);
-    const { content, title, poster, createdAt = '', viewCount, comments = [], collectionCount, isCollected } = videoInfo;
+    const {
+        content,
+        title,
+        poster,
+        createdAt = '',
+        viewCount = 0,
+        comments = [],
+        collectionCount = 0,
+        isCollected,
+        tagList,
+        videoUrl,
+        sourceType,
+    } = videoInfo;
+    const tags = parseMaybeJsonArray(tagList);
+    const commentTotal = calcCommentsCount(comments);
+
+    const destroyVideo = () => {
+        if (playerRef.current) {
+            playerRef.current.dispose();
+            playerRef.current = null;
+        }
+    };
 
     useEffect(() => {
         window.scrollTo({
             top: 0,
             left: 0,
-            behavior: 'smooth'
+            behavior: 'smooth',
         });
         setLoading(true);
-        getArticle()
+        Promise.allSettled([getVideo(), getRecommendVideoList()])
             .catch((err) => {
                 console.error(err);
                 message.error('视频详情加载失败，请稍后再试');
             })
             .finally(() => setLoading(false));
         return destroyVideo;
-    }, [id]);
+    }, [id, userInfo.userId]);
 
-    // 销毁video实例
-    const destroyVideo = () => {
-        videoRef.current && videoRef.current.dispose();
-    }
+    useEffect(() => {
+        if (!videoUrl) {
+            destroyVideo();
+            return;
+        }
 
-    //  获取文章详情
+        initVideo(videoUrl, poster, sourceType);
+        return destroyVideo;
+    }, [videoUrl, poster, sourceType, id]);
+
     const getComments = async () => {
         try {
             const res = await request('/comments', {
@@ -72,206 +120,290 @@ function Video() {
             console.error(err);
         }
         return null;
-    }
+    };
 
-    const getArticle = async () => {
-        let res = await request('/findVideoById', { data: { id: parseInt(id), owner: parseInt(userInfo.userId) } });
-        if (res.status == 200) {
-            let data = res.data;
-            const pagedComments = await getComments();
-            data.comments = pagedComments !== null ? pagedComments : normalizeComments(data);
-            setVideoInfo(data);
-            // setVideoUrl(data.videoUrl);
-            initVideo(data.videoUrl, data.poster);
-            // setTagList(JSON.parse(data.tagList));
-        } else {
-            message.error(res.errorMessage);
+    const getRecommendVideoList = async (pageNum = 1, pageSize = 8, keyword = '') => {
+        try {
+            const res = await request('/getRecommendVideoList', { data: { pageNum, pageSize, keyword } });
+            if (res?.data?.rows) {
+                setRecommendVideoList(res.data.rows.filter(item => String(item.id) !== String(id)));
+            }
+        } catch (err) {
+            console.error(err);
         }
-    }
+    };
+
+    const getVideo = async () => {
+        try {
+            const res = await request('/findVideoById', {
+                data: {
+                    id: parseInt(id),
+                    owner: parseInt(userInfo.userId),
+                },
+            });
+            if (res.status == 200) {
+                const data = res.data || {};
+                const pagedComments = await getComments();
+                const nextVideoInfo = {
+                    ...data,
+                    comments: pagedComments !== null ? pagedComments : normalizeComments(data),
+                    collectionCount: data.collectionCount || 0,
+                };
+                setVideoInfo(nextVideoInfo);
+            } else {
+                message.error(res.errorMessage);
+            }
+        } catch (err) {
+            console.error(err);
+            message.error('视频详情加载失败，请稍后再试');
+        }
+    };
 
     const updateCollection = () => {
+        if (collecting) return;
         if (isCollected) {
             deleteCollection();
         } else {
             addCollection();
         }
-    }
+    };
 
-    // 收藏
     const addCollection = async () => {
-        if (userInfo.userId == -1) {
-            message.info('请先登录,然后可添加收藏');
+        if (!userInfo.userId || userInfo.userId == -1) {
+            message.info('请先登录后再收藏');
             return;
         }
         try {
-            let data = {
-                collectionVideoId: parseInt(id),
-                owner: parseInt(userInfo.userId),
-            }
-            await request('/addVideoCollection', { data });
+            setCollecting(true);
+            await request('/addVideoCollection', {
+                data: {
+                    collectionVideoId: parseInt(id),
+                    owner: parseInt(userInfo.userId),
+                },
+            });
             message.success('添加收藏成功');
-            setVideoInfo({ ...videoInfo, isCollected: true, collectionCount: collectionCount + 1 });
+            setVideoInfo(prev => ({
+                ...prev,
+                isCollected: true,
+                collectionCount: (prev.collectionCount || 0) + 1,
+            }));
         } catch (err) {
-            message.error('添加收藏失败:' + err);
+            message.error('添加收藏失败');
             console.error(err);
+        } finally {
+            setCollecting(false);
         }
-    }
+    };
 
-    // 取消收藏
     const deleteCollection = async () => {
-        try {
-            let data = {
-                collectionVideoId: parseInt(id),
-                owner: parseInt(userInfo.userId),
-            }
-            await request('/deleteVideoCollection', { data });
-            message.success('取消收藏成功');
-            setVideoInfo({ ...videoInfo, isCollected: false, collectionCount: collectionCount - 1 });
-        } catch (err) {
-            message.error('取消收藏失败:' + err);
-            console.error(err);
+        if (!userInfo.userId || userInfo.userId == -1) {
+            message.info('请先登录后再操作');
+            return;
         }
-    }
+        try {
+            setCollecting(true);
+            await request('/deleteVideoCollection', {
+                data: {
+                    collectionVideoId: parseInt(id),
+                    owner: parseInt(userInfo.userId),
+                },
+            });
+            message.success('取消收藏成功');
+            setVideoInfo(prev => ({
+                ...prev,
+                isCollected: false,
+                collectionCount: Math.max((prev.collectionCount || 0) - 1, 0),
+            }));
+        } catch (err) {
+            message.error('取消收藏失败');
+            console.error(err);
+        } finally {
+            setCollecting(false);
+        }
+    };
 
-    //  刷新子组件传来的评论列表
     const setCommentList = (commentList) => {
-        console.log(commentList)
-        setVideoInfo(prevVideoInfo => ({ ...prevVideoInfo, comments: normalizeComments({ comments: commentList }) }));
-    }
+        setVideoInfo(prevVideoInfo => ({
+            ...prevVideoInfo,
+            comments: normalizeComments({ comments: commentList }),
+        }));
+    };
 
-    const initVideo = (videoUrl, poster) => {
-        const myPlayer = videojs("#myVideo", {
-            controls: true, //是否显示控制条
-            poster: poster ? poster : '', // 视频封面图地址
-            muted: false, // 是否静音
-            preload: 'auto', //预加载
-            autoplay: false, //是否自动播放
-            fluid: true, // 自适应宽高
-            loop: false, //是否循环播放
+    const initVideo = (nextVideoUrl, nextPoster, nextSourceType) => {
+        destroyVideo();
+        setPlayerError(false);
+        if (!nextVideoUrl || !videoElementRef.current) {
+            setPlayerError(true);
+            return;
+        }
+
+        const inferredType = nextSourceType || getVideoSourceType(nextVideoUrl);
+        const source = {
+            src: nextVideoUrl,
+            ...(inferredType ? { type: inferredType } : {}),
+        };
+
+        const myPlayer = videojs(videoElementRef.current, {
+            controls: true,
+            poster: nextPoster || '',
+            muted: false,
+            preload: 'auto',
+            autoplay: false,
+            fluid: false,
+            width: 800,
+            height: 430,
+            loop: false,
             inactivityTimeout: false,
-            language: 'zh-CN', // 设置语言
+            language: 'zh-CN',
             playbackRates: [0.5, 1, 1.5, 2],
-            currentTimeDisplay: true,
-            controlBar: { // 设置控制条组件
-                // currentTimeDisplay: true,   // 当前时间
+            html5: {
+                vhs: {
+                    // 后端现在返回 master.m3u8，开启 VHS 后 video.js 会自动选择合适清晰度
+                    overrideNative: true,
+                    enableLowInitialPlaylist: true,
+                    smoothQualityChange: true,
+                },
+            },
+            controlBar: {
                 timeDivider: true,
-                playToggle: true,   //  播放按钮
-                // progressControl: true,  //  进度条
-                volumePanel: {  //  音量控制
+                playToggle: true,
+                volumePanel: {
                     inline: true,
                 },
             },
-            sources: [ // 视频源
-                {
-                    src: videoUrl,
-                    // src: 'http://www.alanarmstrong.xyz/videoPath/28e54aca6435b9af49a2f40c4c682ee9.mp4/28e54aca6435b9af49a2f40c4c682ee9.mp4.m3u8',
-                    type: 'application/x-mpegURL',
-                    poster: poster ? poster : '',
-                },
-            ]
-        }, function onPlayReady() {
-            console.log('视频可以播放啦~~~');
-            /**
-             * 监听内部事件
-             */
-            this.on("loadstart", function () {
-                console.log("开始请求数据 ");
-            })
-            this.on("progress", function () {
-                console.log("正在请求数据 ");
-            })
-            this.on("loadedmetadata", function () {
-                console.log("获取资源长度完成 ")
-            })
-            this.on("canplaythrough", function () {
-                console.log("视频源数据加载完成");
-
-            })
-            this.on("waiting", function () {
-                console.log("等待数据")
-            });
-            this.on("play", function () {
-                console.log("视频开始播放");
-            });
-            this.on("playing", function () {
-                console.log("视频播放中");
-            });
-            this.on("pause", function () {
-                console.log("视频暂停播放");
-            });
-            this.on("ended", function () {
-                console.log("视频播放结束");
-            });
-            this.on("error", function () {
-                console.log("加载错误");
-            });
-            this.on("seeking", function () {
-                console.log("视频跳转中");
-            })
-            this.on("seeked", function () {
-                console.log("视频跳转结束");
-            })
-            this.on("ratechange", function () {
-                console.log("播放速率改变")
-            });
-            this.on("timeupdate", function () {
-                console.log("播放时长改变");
-            })
-            this.on("volumechange", function () {
-                var howLoudIsIt = myPlayer.volume();
-                console.log("音量改变" + howLoudIsIt);
-                localStorage.setItem("howLoudIsIt", howLoudIsIt);
-            })
-            this.on("stalled", function () {
-                console.log("网速异常");
-            })
+            sources: [source],
         });
-        // 设置缓存配置(音量)
-        let cacheLoudIsIt = localStorage.getItem('howLoudIsIt') || 0.5;
-        myPlayer.volume(cacheLoudIsIt);
-        videoRef.current = myPlayer;
-    }
+
+        myPlayer.ready(() => {
+            const cacheVolume = Number(localStorage.getItem('howLoudIsIt'));
+            myPlayer.volume(Number.isFinite(cacheVolume) ? cacheVolume : 0.5);
+        });
+        myPlayer.on('volumechange', () => {
+            localStorage.setItem('howLoudIsIt', myPlayer.volume());
+        });
+        myPlayer.on('error', () => {
+            setPlayerError(true);
+        });
+        playerRef.current = myPlayer;
+    };
 
     return (
         <Spin tip='加载中...' spinning={loading}>
             <article className='app-video'>
-                <div className='post-header'>
-                    <h1 className='post-title'>{title}</h1>
-                    <div className='article-desc'>
-                        <span className='post-time'>
-                            <EditOutlined />
-                            &nbsp; 发布于： &nbsp;
-                            <span>{createdAt.slice(0, 10)}</span>
-                        </span>
-                        <Divider type='vertical' />
-                        <a className='comment-count' href='#discuss' style={{ color: 'inherit' }}>
-                            <CommentOutlined />
-                            <span style={{ marginRight: 5 }}> {calcCommentsCount(comments)}</span>
-                        </a>
-                        <EyeOutlined style={{ margin: '0 2px 0 5px' }} />
-                        <span style={{ marginRight: 5 }}>{viewCount}</span>
-                        <span onClick={updateCollection} style={{ cursor: 'pointer' }}>
-                            {isCollected ? <StarTwoTone twoToneColor="#e0730d" style={{ margin: '0 2px 0 5px' }} /> : <StarOutlined style={{ margin: '0 2px 0 5px' }} />}
-                            <span style={{ marginRight: 5 }}>{collectionCount}</span>
-                        </span>
-                    </div>
-                </div>
-                <div className='post-content'>
-                    <div className='article-detail'>
-                        <div className='video_box'>
-                            <video id="myVideo" className="video-js vjs-default-skin "></video>
+                <div className='video-page-shell'>
+                    <section className='video-ticket-hero'>
+                        <div className='video-film-strip' aria-hidden='true'>
+                            {Array.from({ length: 18 }).map((_, index) => <span key={index} />)}
                         </div>
-                        <div className='video-description'>
-                            <p>视频简介：</p>
-                            <p>{content}</p>
+                        <div className='video-ticket-layout'>
+                            <div className='video-poster-ticket'>
+                                <img src={poster || bilan} alt='视频票根封面' />
+                                <div className='poster-ticket-mark'>
+                                    <PlayCircleOutlined />
+                                    <span>NOW SHOWING</span>
+                                </div>
+                            </div>
+                            <div className='video-title-ticket'>
+                                <span className='video-kicker'>
+                                    <VideoCameraOutlined />
+                                    私人放映票
+                                </span>
+                                <h1 className='post-title'>{title || '视频正在加载'}</h1>
+                                <div className='video-meta-strip'>
+                                    <span>
+                                        <CalendarOutlined />
+                                        {createdAt ? createdAt.slice(0, 10) : '待发布'}
+                                    </span>
+                                    <a href='#discuss'>
+                                        <CommentOutlined />
+                                        {commentTotal}
+                                    </a>
+                                    <span>
+                                        <EyeOutlined />
+                                        {viewCount}
+                                    </span>
+                                    <button className='video-collect-inline' type='button' onClick={updateCollection} disabled={collecting}>
+                                        {isCollected ? <StarTwoTone twoToneColor='#d8688a' /> : <StarOutlined />}
+                                        {collectionCount}
+                                    </button>
+                                </div>
+                                {tags.length > 0 ? (
+                                    <div className='video-tag-row'>
+                                        {tags.map(item => <Tag key={item}>{item}</Tag>)}
+                                    </div>
+                                ) : null}
+                            </div>
                         </div>
-                        <Discuss pageType={2} id={id} commentList={comments} setCommentList={setCommentList} />
-                    </div>
+                    </section>
+
+                    <section className='video-watch-grid'>
+                        <div className='video-watch-main'>
+                            <div className='video-player-shell'>
+                                <div className='video-player-frame'>
+                                    {videoUrl ? (
+                                        <video key={id} ref={videoElementRef} className='video-js vjs-default-skin alan-video-player' playsInline />
+                                    ) : (
+                                        <div className='video-empty-player'>
+                                            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description='视频地址暂不可用' />
+                                        </div>
+                                    )}
+                                </div>
+                                {playerError ? (
+                                    <div className='video-player-alert'>
+                                        播放器暂时无法读取视频源，请稍后再试。
+                                    </div>
+                                ) : null}
+                            </div>
+
+                            <div className='video-description-panel'>
+                                <div>
+                                    <span className='panel-label'>视频简介</span>
+                                    <h2>关于这支视频</h2>
+                                </div>
+                                <p>{content || '暂无简介。'}</p>
+                            </div>
+
+                            <Discuss pageType={2} id={id} commentList={comments} setCommentList={setCommentList} />
+                        </div>
+
+                        <aside className='video-side-column'>
+                            <div className='video-status-card'>
+                                <span className='panel-label'>播放状态</span>
+                                <strong>{isCollected ? '已经收入收藏' : '正在等待收藏'}</strong>
+                                <Button
+                                    type='primary'
+                                    className='video-collect-button'
+                                    icon={isCollected ? <StarTwoTone twoToneColor='#fff' /> : <StarOutlined />}
+                                    loading={collecting}
+                                    onClick={updateCollection}
+                                >
+                                    {isCollected ? '取消收藏' : '收藏视频'}
+                                </Button>
+                                <div className='video-stat-list'>
+                                    <div>
+                                        <span>{viewCount}</span>
+                                        <p>观看</p>
+                                    </div>
+                                    <div>
+                                        <span>{commentTotal}</span>
+                                        <p>讨论</p>
+                                    </div>
+                                    <div>
+                                        <span>{collectionCount}</span>
+                                        <p>收藏</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {recommendVideoListData.length > 0 ? (
+                                <Recommend type={3} articleList={recommendVideoListData} />
+                            ) : null}
+                        </aside>
+                    </section>
                 </div>
             </article>
             <BackTop />
         </Spin>
-    )
+    );
 }
 
-export default Video
+export default Video;
