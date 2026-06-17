@@ -21,6 +21,7 @@ import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { request } from '../../utils/request';
+import { getAuthorizationHeader, handleAuthFailure, isAuthErrorResponse } from '../../utils/auth';
 import './index.less';
 
 const { CheckableTag } = Tag;
@@ -346,8 +347,18 @@ function MdEditor(props) {
     const res = await axios.post('/commit/api/uploadImage', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
+        ...getAuthorizationHeader(),
       },
+    }).catch((error) => {
+      // 直连上传接口不经过 request 拦截器，这里单独补上 401 登录态处理。
+      if (error?.response?.status === 401 || isAuthErrorResponse(error?.response?.data)) {
+        handleAuthFailure(error?.response?.data, message);
+      }
+      throw error;
     });
+    if (isAuthErrorResponse(res?.data)) {
+      handleAuthFailure(res.data, message);
+    }
     return res?.data?.data?.url;
   };
 

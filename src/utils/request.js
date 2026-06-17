@@ -1,8 +1,12 @@
 import axios from 'axios'
 
 // const loginToken = localStorage.getItem('loginToken') 
-import { get } from './storage';
 import { message } from 'antd';
+import {
+    getAuthorizationHeader,
+    handleAuthFailure,
+    isAuthErrorResponse,
+} from './auth';
 const initOptions = {
     headers: {
         'Range': 'bytes=0-99',
@@ -30,10 +34,9 @@ const instance = axios.create({
 // 拦截请求
 instance.interceptors.request.use(
     config => {
-        const token = get('userInfo')?.token;
-        if (token) {
-            config.headers['authorization'] = token;
-        }
+        // 需要登录态的接口统一使用后端推荐的 Authorization Bearer 头。
+        config.headers = config.headers || {};
+        Object.assign(config.headers, getAuthorizationHeader());
         return config
     },
     error => {
@@ -44,13 +47,17 @@ instance.interceptors.request.use(
 // 拦截响应
 instance.interceptors.response.use(
     config => {
-        // 拦截token失效的请求，统一处理
-        if (config.data?.data?.errorType === 'tokenInvalid') {
-            message.error('登录失效，请重新登录');
+        // 兼容后端以 200 返回业务错误的情况，发现登录态错误后统一清理并跳登录页。
+        if (isAuthErrorResponse(config.data)) {
+            handleAuthFailure(config.data, message);
         }
         return config
     },
     error => {
+        const res = error?.response;
+        if (res?.status === 401 || isAuthErrorResponse(res?.data)) {
+            handleAuthFailure(res?.data, message);
+        }
         return Promise.reject(error)
     }
 )

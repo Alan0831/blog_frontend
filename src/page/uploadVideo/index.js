@@ -4,6 +4,7 @@ import { request } from '../../utils/request';
 import { Button, Input, message, Upload, Progress, Select } from 'antd';
 import { uploadFileChunk } from '../../utils/uploadFile';
 import { getErrorMessage } from '../../utils/errorMessage';
+import { getAuthorizationHeader, handleAuthFailure, isAuthErrorResponse } from '../../utils/auth';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -317,8 +318,18 @@ function UploadVideo() {
       const res = await axios.post('/commit/api/uploadImage', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          ...getAuthorizationHeader(),
         },
+      }).catch((error) => {
+        // 直连上传接口不经过 request 拦截器，这里单独补上 401 登录态处理。
+        if (error?.response?.status === 401 || isAuthErrorResponse(error?.response?.data)) {
+          handleAuthFailure(error?.response?.data, message);
+        }
+        throw error;
       });
+      if (isAuthErrorResponse(res?.data)) {
+        handleAuthFailure(res.data, message);
+      }
       const url = res?.data?.data?.url;
       if (!url) throw new Error('missing image url');
       setImageUrl(url);

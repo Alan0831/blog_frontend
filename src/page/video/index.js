@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import './index.less';
 import { BackTop, Button, Empty, Spin, Tag, message } from 'antd';
@@ -28,6 +28,208 @@ const getVideoSourceType = (url = '') => {
     return '';
 };
 
+const VIDEO_QUALITY_OPTIONS = [
+    { value: '1080', label: '1080P 高清' },
+    { value: '720', label: '720P 准高清' },
+    { value: '360', label: '360P 流畅' },
+    { value: 'auto', label: '自动' },
+];
+
+const NETWORK_QUALITY_TEXT = {
+    360: '360P 流畅',
+    720: '720P 准高清',
+    1080: '1080P 高清',
+    auto: '自动',
+};
+
+const getNetworkConnection = () => {
+    if (typeof navigator === 'undefined') return null;
+    return navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+};
+
+const getDefaultVideoQuality = () => {
+    const connection = getNetworkConnection();
+    if (!connection) return '720';
+
+    const effectiveType = connection.effectiveType || '';
+    const downlink = Number(connection.downlink || 0);
+
+    if (connection.saveData || ['slow-2g', '2g'].includes(effectiveType) || (downlink > 0 && downlink < 1.5)) {
+        return '360';
+    }
+
+    if (effectiveType === '4g' && (!downlink || downlink >= 4)) {
+        return '1080';
+    }
+
+    if (downlink >= 5) {
+        return '1080';
+    }
+
+    return '720';
+};
+
+const normalizeQuality = (quality) => {
+    const text = String(quality || '').toLowerCase();
+    if (text.includes('1080')) return '1080';
+    if (text.includes('720')) return '720';
+    if (text.includes('360')) return '360';
+    if (text === 'sd') return '360';
+    if (text === 'hd') return '720';
+    if (text === 'fhd') return '1080';
+    return '';
+};
+
+const getSourceUrl = (source) => {
+    if (typeof source === 'string') return source;
+    return source?.url || source?.src || source?.videoUrl || source?.playUrl || '';
+};
+
+const getSourceQuality = (source, fallbackQuality) => {
+    if (typeof source === 'string') return normalizeQuality(fallbackQuality);
+    return normalizeQuality(source?.quality || source?.resolution || source?.height || source?.label || source?.name || fallbackQuality);
+};
+
+const getSourceType = (source, url) => {
+    if (typeof source === 'string') return getVideoSourceType(url);
+    return source?.sourceType || source?.type || getVideoSourceType(url);
+};
+
+const normalizeQualitySources = (videoInfo = {}) => {
+    const sources = [];
+    const pushSource = (quality, url, sourceType) => {
+        const normalizedQuality = normalizeQuality(quality);
+        if (!normalizedQuality || !url) return;
+        sources.push({
+            quality: normalizedQuality,
+            url,
+            sourceType: sourceType || getVideoSourceType(url),
+        });
+    };
+
+    const readSourceBlock = (block) => {
+        if (!block) return;
+        if (Array.isArray(block)) {
+            block.forEach(item => {
+                const url = getSourceUrl(item);
+                pushSource(getSourceQuality(item), url, getSourceType(item, url));
+            });
+            return;
+        }
+
+        if (typeof block === 'object') {
+            Object.entries(block).forEach(([quality, value]) => {
+                const url = getSourceUrl(value);
+                pushSource(getSourceQuality(value, quality), url, getSourceType(value, url));
+            });
+        }
+    };
+
+    [
+        videoInfo.videoSources,
+        videoInfo.videoSource,
+        videoInfo.sources,
+        videoInfo.qualitySources,
+        videoInfo.qualityUrls,
+        videoInfo.videoUrls,
+        videoInfo.urls,
+        videoInfo.resolutionUrls,
+        videoInfo.transcodeUrls,
+    ].forEach(readSourceBlock);
+
+    pushSource('360', videoInfo.videoUrl360 || videoInfo.video360Url || videoInfo.url360 || videoInfo.p360Url, videoInfo.sourceType360);
+    pushSource('720', videoInfo.videoUrl720 || videoInfo.video720Url || videoInfo.url720 || videoInfo.p720Url, videoInfo.sourceType720);
+    pushSource('1080', videoInfo.videoUrl1080 || videoInfo.video1080Url || videoInfo.url1080 || videoInfo.p1080Url, videoInfo.sourceType1080);
+
+    return sources.filter((item, index, list) => (
+        list.findIndex(source => source.quality === item.quality) === index
+    ));
+};
+
+const getSelectedVideoSource = (qualitySources, selectedQuality, fallbackUrl, fallbackType) => {
+    if (selectedQuality !== 'auto') {
+        const matchedSource = qualitySources.find(item => item.quality === selectedQuality);
+        if (matchedSource) return matchedSource;
+    }
+
+    return {
+        quality: 'auto',
+        url: fallbackUrl,
+        sourceType: fallbackType || getVideoSourceType(fallbackUrl),
+    };
+};
+
+const getPlayerRepresentations = (player) => {
+    const tech = typeof player?.tech === 'function' ? player.tech({ IWillNotUseThisInPlugins: true }) : null;
+    const vhs = tech?.vhs || tech?.hls;
+    if (typeof vhs?.representations !== 'function') return [];
+    return vhs.representations() || [];
+};
+
+const getQualityDisplayText = (quality) => NETWORK_QUALITY_TEXT[quality] || `${quality}P`;
+
+const getQualityMenuOptions = (supportedQualities = []) => {
+    const supportedSet = new Set(supportedQualities.map(item => String(item)));
+    return VIDEO_QUALITY_OPTIONS.filter(item => item.value === 'auto' || supportedSet.size === 0 || supportedSet.has(item.value));
+};
+
+const resolveM3u8Url = (url, baseUrl) => {
+    try {
+        return new URL(url, baseUrl).href;
+    } catch (error) {
+        return url;
+    }
+};
+
+const getInferredQualitySources = (masterUrl = '') => {
+    if (!masterUrl || !masterUrl.split('?')[0].toLowerCase().endsWith('/master.m3u8')) return [];
+    return ['360', '720', '1080'].map(quality => ({
+        quality,
+        url: masterUrl.replace(/master\.m3u8(\?.*)?$/i, `${quality}p/index.m3u8$1`),
+        sourceType: 'application/x-mpegURL',
+    }));
+};
+
+const parseMasterPlaylistSources = (playlistText = '', masterUrl = '') => {
+    const lines = playlistText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+    const sources = [];
+
+    for (let index = 0; index < lines.length; index++) {
+        const line = lines[index];
+        if (!line.startsWith('#EXT-X-STREAM-INF')) continue;
+
+        const resolutionMatch = line.match(/RESOLUTION=\d+x(\d+)/i);
+        const nameMatch = line.match(/NAME="?([^",]+)"?/i);
+        const quality = normalizeQuality(resolutionMatch?.[1] || nameMatch?.[1] || '');
+        if (!quality) continue;
+
+        const uri = lines.slice(index + 1).find(item => item && !item.startsWith('#'));
+        if (!uri) continue;
+
+        sources.push({
+            quality,
+            url: resolveM3u8Url(uri, masterUrl),
+            sourceType: 'application/x-mpegURL',
+        });
+    }
+
+    return sources.filter((item, index, list) => (
+        ['360', '720', '1080'].includes(item.quality)
+        && list.findIndex(source => source.quality === item.quality) === index
+    ));
+};
+
+const getFallbackQuality = (targetQuality, availableQualities = []) => {
+    const numericQualities = availableQualities.map(item => Number(item)).filter(Boolean).sort((a, b) => a - b);
+    if (!numericQualities.length) return 'auto';
+
+    const targetHeight = Number(targetQuality);
+    if (!targetHeight) return String(numericQualities[numericQualities.length - 1]);
+
+    const lowerOrEqual = numericQualities.filter(item => item <= targetHeight);
+    return String((lowerOrEqual.length > 0 ? lowerOrEqual : numericQualities)[(lowerOrEqual.length > 0 ? lowerOrEqual : numericQualities).length - 1]);
+};
+
 /**
  * 视频内容
 */
@@ -36,6 +238,9 @@ function Video() {
     const [loading, setLoading] = useState(false);
     const [collecting, setCollecting] = useState(false);
     const [playerError, setPlayerError] = useState(false);
+    const [selectedQuality, setSelectedQuality] = useState(() => getDefaultVideoQuality());
+    const [activeQuality, setActiveQuality] = useState(() => getDefaultVideoQuality());
+    const [hlsQualitySources, setHlsQualitySources] = useState([]);
     const [recommendVideoListData, setRecommendVideoList] = useState([]);
     const [videoInfo, setVideoInfo] = useState({
         title: '',
@@ -52,6 +257,9 @@ function Video() {
     });
     const playerRef = useRef(null);
     const videoElementRef = useRef(null);
+    const selectedQualityRef = useRef(selectedQuality);
+    const manualQualityRef = useRef(false);
+    const resumePlaybackRef = useRef(null);
     const userInfo = useSelector(state => state.user);
     const {
         content,
@@ -66,6 +274,18 @@ function Video() {
         videoUrl,
         sourceType,
     } = videoInfo;
+    const qualitySources = useMemo(() => {
+        const explicitSources = normalizeQualitySources(videoInfo);
+        const inferredSources = hlsQualitySources.length > 0 ? hlsQualitySources : getInferredQualitySources(videoUrl);
+        return [...explicitSources, ...inferredSources].filter((item, index, list) => (
+            list.findIndex(source => source.quality === item.quality) === index
+        ));
+    }, [hlsQualitySources, videoInfo, videoUrl]);
+    const currentVideoSource = useMemo(() => (
+        getSelectedVideoSource(qualitySources, selectedQuality, videoUrl, sourceType)
+    ), [qualitySources, selectedQuality, sourceType, videoUrl]);
+    const playableVideoUrl = currentVideoSource.url;
+    const playableSourceType = currentVideoSource.sourceType;
     const tags = parseMaybeJsonArray(tagList);
     const commentTotal = calcCommentsCount(comments);
 
@@ -93,14 +313,70 @@ function Video() {
     }, [id, userInfo.userId]);
 
     useEffect(() => {
-        if (!videoUrl) {
+        selectedQualityRef.current = selectedQuality;
+    }, [selectedQuality]);
+
+    useEffect(() => {
+        setHlsQualitySources([]);
+        if (!videoUrl || !videoUrl.split('?')[0].toLowerCase().endsWith('/master.m3u8')) return undefined;
+
+        const controller = new AbortController();
+        fetch(videoUrl, { signal: controller.signal })
+            .then(response => (response.ok ? response.text() : ''))
+            .then(text => {
+                if (!text) return;
+                const parsedSources = parseMasterPlaylistSources(text, videoUrl);
+                if (parsedSources.length > 0) {
+                    setHlsQualitySources(parsedSources);
+                }
+            })
+            .catch(error => {
+                if (error?.name !== 'AbortError') {
+                    console.warn('parse video quality playlist failed', error);
+                }
+            });
+
+        return () => controller.abort();
+    }, [videoUrl]);
+
+    useEffect(() => {
+        const connection = getNetworkConnection();
+        if (!connection || typeof connection.addEventListener !== 'function') return undefined;
+
+        const handleConnectionChange = () => {
+            if (!manualQualityRef.current) {
+                const nextQuality = getDefaultVideoQuality();
+                setSelectedQuality(nextQuality);
+                setActiveQuality(nextQuality);
+            }
+        };
+
+        connection.addEventListener('change', handleConnectionChange);
+        return () => connection.removeEventListener('change', handleConnectionChange);
+    }, []);
+
+    useEffect(() => {
+        if (!playableVideoUrl) {
             destroyVideo();
             return;
         }
 
-        initVideo(videoUrl, poster, sourceType);
+        initVideo(playableVideoUrl, poster, playableSourceType);
         return destroyVideo;
-    }, [videoUrl, poster, sourceType, id]);
+    }, [playableVideoUrl, poster, playableSourceType, id]);
+
+    useEffect(() => {
+        if (playerRef.current) {
+            syncPlayerQuality(playerRef.current, selectedQuality);
+        }
+    }, [selectedQuality]);
+
+    useEffect(() => {
+        if (selectedQuality === 'auto' || qualitySources.length === 0) return;
+        const availableQualities = qualitySources.map(item => item.quality);
+        if (availableQualities.includes(selectedQuality)) return;
+        setSelectedQuality(getFallbackQuality(selectedQuality, availableQualities));
+    }, [qualitySources, selectedQuality]);
 
     const getComments = async () => {
         try {
@@ -149,6 +425,10 @@ function Video() {
                     comments: pagedComments !== null ? pagedComments : normalizeComments(data),
                     collectionCount: data.collectionCount || 0,
                 };
+                const nextQuality = getDefaultVideoQuality();
+                manualQualityRef.current = false;
+                setSelectedQuality(nextQuality);
+                setActiveQuality(nextQuality);
                 setVideoInfo(nextVideoInfo);
             } else {
                 message.error(res.errorMessage);
@@ -229,6 +509,135 @@ function Video() {
         }));
     };
 
+    const renderQualityControl = (player, selected, active, supportedQualities = []) => {
+        const controlBar = player?.controlBar?.el?.();
+        if (!controlBar) return;
+
+        let control = controlBar.querySelector('.vjs-quality-control');
+        if (!control) {
+            control = document.createElement('div');
+            control.className = 'vjs-quality-control vjs-control';
+            const insertBefore = controlBar.querySelector('.vjs-playback-rate')
+                || controlBar.querySelector('.vjs-picture-in-picture-control')
+                || controlBar.querySelector('.vjs-fullscreen-control');
+            controlBar.insertBefore(control, insertBefore);
+        }
+
+        control.innerHTML = '';
+        const trigger = document.createElement('button');
+        trigger.type = 'button';
+        trigger.className = 'vjs-quality-trigger';
+        trigger.textContent = getQualityDisplayText(active);
+        trigger.setAttribute('aria-haspopup', 'menu');
+        trigger.setAttribute('aria-expanded', 'false');
+
+        const menu = document.createElement('div');
+        menu.className = 'vjs-quality-menu';
+        menu.setAttribute('role', 'menu');
+        menu.setAttribute('aria-label', '视频清晰度');
+
+        getQualityMenuOptions(supportedQualities).forEach(item => {
+            const menuItem = document.createElement('button');
+            menuItem.type = 'button';
+            menuItem.className = `vjs-quality-menu-item ${item.value === selected || item.value === active ? 'is-active' : ''}`;
+            menuItem.textContent = item.label;
+            menuItem.setAttribute('role', 'menuitemradio');
+            menuItem.setAttribute('aria-checked', String(item.value === selected || item.value === active));
+            menuItem.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                control.classList.remove('is-open');
+                control.classList.add('is-locked-closed');
+                trigger.setAttribute('aria-expanded', 'false');
+                handleQualityChange(item.value);
+            });
+            menu.appendChild(menuItem);
+        });
+
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            control.classList.remove('is-locked-closed');
+            const nextOpen = !control.classList.contains('is-open');
+            control.classList.toggle('is-open', nextOpen);
+            trigger.setAttribute('aria-expanded', String(nextOpen));
+        });
+
+        control.onmouseleave = () => {
+            control.classList.remove('is-open');
+            control.classList.remove('is-locked-closed');
+            trigger.setAttribute('aria-expanded', 'false');
+        };
+        control.appendChild(menu);
+        control.appendChild(trigger);
+    };
+
+    const syncPlayerQuality = (player, quality) => {
+        const representations = getPlayerRepresentations(player);
+        const hlsQualities = Array.from(new Set(
+            representations
+                .map(item => Number(item.height))
+                .filter(Boolean)
+                .sort((a, b) => a - b)
+        )).map(String);
+        const sourceQualities = qualitySources.map(item => item.quality);
+        const supportedQualities = hlsQualities.length > 0 ? hlsQualities : sourceQualities;
+
+        if (!representations.length) {
+            setActiveQuality(quality);
+            renderQualityControl(player, quality, quality, supportedQualities);
+            return;
+        }
+
+        if (quality === 'auto') {
+            representations.forEach(item => item.enabled(true));
+            setActiveQuality('auto');
+            renderQualityControl(player, quality, 'auto', supportedQualities);
+            return;
+        }
+
+        const heights = hlsQualities.map(item => Number(item));
+        if (!heights.length) {
+            setActiveQuality(quality);
+            renderQualityControl(player, quality, quality, supportedQualities);
+            return;
+        }
+
+        const targetHeight = Number(quality);
+        const selectedHeight = heights.includes(targetHeight)
+            ? targetHeight
+            : heights.reduce((closestHeight, currentHeight) => (
+                Math.abs(currentHeight - targetHeight) < Math.abs(closestHeight - targetHeight) ? currentHeight : closestHeight
+            ), heights[0]);
+
+        representations.forEach(item => {
+            item.enabled(Number(item.height) === selectedHeight);
+        });
+        setActiveQuality(String(selectedHeight));
+        renderQualityControl(player, quality, String(selectedHeight), supportedQualities);
+    };
+
+    const handleQualityChange = (quality) => {
+        const qualityControl = playerRef.current?.controlBar?.el?.()?.querySelector('.vjs-quality-control');
+        if (qualityControl) {
+            qualityControl.classList.remove('is-open');
+            qualityControl.classList.add('is-locked-closed');
+            qualityControl.querySelector('.vjs-quality-trigger')?.setAttribute('aria-expanded', 'false');
+        }
+
+        if (quality === selectedQuality) return;
+
+        if (playerRef.current) {
+            resumePlaybackRef.current = {
+                time: playerRef.current.currentTime(),
+                shouldPlay: !playerRef.current.paused(),
+            };
+        }
+
+        manualQualityRef.current = true;
+        setSelectedQuality(quality);
+    };
+
     const initVideo = (nextVideoUrl, nextPoster, nextSourceType) => {
         destroyVideo();
         setPlayerError(false);
@@ -247,7 +656,7 @@ function Video() {
             controls: true,
             poster: nextPoster || '',
             muted: false,
-            preload: 'auto',
+            preload: 'metadata',
             autoplay: false,
             fluid: false,
             width: 800,
@@ -260,7 +669,7 @@ function Video() {
                 vhs: {
                     // 后端现在返回 master.m3u8，开启 VHS 后 video.js 会自动选择合适清晰度
                     overrideNative: true,
-                    enableLowInitialPlaylist: true,
+                    enableLowInitialPlaylist: false,
                     smoothQualityChange: true,
                 },
             },
@@ -277,7 +686,19 @@ function Video() {
         myPlayer.ready(() => {
             const cacheVolume = Number(localStorage.getItem('howLoudIsIt'));
             myPlayer.volume(Number.isFinite(cacheVolume) ? cacheVolume : 0.5);
+            const resumeState = resumePlaybackRef.current;
+            if (resumeState?.time > 0) {
+                myPlayer.currentTime(resumeState.time);
+            }
+            if (resumeState?.shouldPlay) {
+                myPlayer.play()?.catch(() => {});
+            }
+            resumePlaybackRef.current = null;
+            syncPlayerQuality(myPlayer, selectedQualityRef.current);
         });
+        myPlayer.on('loadedmetadata', () => syncPlayerQuality(myPlayer, selectedQualityRef.current));
+        myPlayer.on('loadeddata', () => syncPlayerQuality(myPlayer, selectedQualityRef.current));
+        myPlayer.on('canplay', () => syncPlayerQuality(myPlayer, selectedQualityRef.current));
         myPlayer.on('volumechange', () => {
             localStorage.setItem('howLoudIsIt', myPlayer.volume());
         });

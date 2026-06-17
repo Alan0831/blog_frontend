@@ -1,18 +1,10 @@
 import React, { useEffect, useState } from 'react'
-import { Input, Pagination, Spin, Empty } from 'antd';
-import ArticleCard from '../../components/ArticleCard';
-import VideoCard from '../../components/VideoCard';
-import CodeCard from '../../components/CodeCard';
+import { Spin } from 'antd';
 import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 import './index.less'
-import Recommend from '../../components/Recommend';
-import useBus from '../../hooks/useBus';
-import AlanCard from '../../components/alanCard';
-import MenuType, { defaultMenuTypes } from '../../components/menuType';
-import TagCard from '../../components/TagCard';
-
-const socket = location.origin.includes('localhost') ? new WebSocket('ws://127.0.0.1:9998') : new WebSocket('ws://8.152.1.135:9998');
+import { defaultMenuTypes } from '../../components/menuType';
+import ChatterZone from '../../components/ChatterZone';
 
 const topicTabs = [
     {
@@ -75,7 +67,6 @@ export default function Home() {
     const [activeTopic, setActiveTopic] = useState(getInitialTopic);
     const [menuTypeByTopic, setMenuTypeByTopic] = useState(getInitialMenuTypeByTopic);
     const userInfo = useSelector(state => state.user);
-    const bus = useBus();
     const menuType = menuTypeByTopic[activeTopic] || 1;
     const activeViewKey = `${activeTopic}-${menuType}`;
     const keyword = keywordByView[activeViewKey] || '';
@@ -97,8 +88,6 @@ export default function Home() {
     const activeTagList = tagListByTopic[activeTopic] || [];
 
     useEffect(() => {
-        initSocket();
-
         const initialTopic = getInitialTopic();
         const initialMenuMap = getInitialMenuTypeByTopic();
         const initialMenuType = initialTopic === 'chatter' && initialMenuMap[initialTopic] == 3 ? 1 : initialMenuMap[initialTopic];
@@ -106,26 +95,6 @@ export default function Home() {
         setMenuTypeByTopic({ ...initialMenuMap, [initialTopic]: initialMenuType });
         loadInitialData();
     }, []);
-
-    const initSocket = () => {
-        socket.onopen = () => {
-            console.log("服务器链接成功");
-            socket.send(JSON.stringify({ toName: userInfo.username, timeSchedule: '30 * * * * *' }));
-        };
-        // 接收到消息的回调
-        socket.onmessage = (res) => {
-            console.log(res);
-            bus.emit('getNotice', JSON.parse(res.data));
-        }
-        // 连接发生错误的回调
-        socket.onerror = (err) => {
-            console.error('socket错误:' + err);
-        }
-        // 关闭的回调
-        socket.onclose = () => {
-            console.log('socket已关闭');
-        }
-    }
 
     // 获取tag列表
     const getTagList = async (topicKey = activeTopic) => {
@@ -324,94 +293,35 @@ export default function Home() {
         return '搜索代码';
     }
 
-    const renderHomeList = () => {
-        const currentList = menuType == 1 ? activeArticleList : menuType == 2 ? activeVideoList : activeCodeList;
-        const activeSearchedKeyword = searchedKeywords[activeViewKey] || '';
-
-        if (!loading && currentList.length === 0) {
-            return (
-                <div className='home_empty_state'>
-                    <Empty
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                        description={<span>{activeSearchedKeyword ? `没有搜索到“${activeSearchedKeyword}”对应内容` : '暂时没有内容'}</span>}
-                    />
-                </div>
-            )
-        }
-
-        if (menuType == 1) {
-            return activeArticleList.map((item) => <ArticleCard articleInfo={item} userInfo={userInfo} key={item.id} />);
-        }
-
-        if (menuType == 2) {
-            return activeVideoList.map((item) => <VideoCard videoInfo={item} userInfo={userInfo} key={item.id} />);
-        }
-
-        return activeCodeList.map((item) => <CodeCard codeInfo={item} userInfo={userInfo} key={item.id} />);
-    }
-
     return (
-        <Spin tip='加载中,请稍后...' spinning={loading}>
+        <Spin tip='加载中，请稍候...' spinning={loading}>
             <div>
                 <div className='home_content'>
-                    <div className="tnwave waveAnimation">
-                        <div className="waveWrapperInner bgTop">
-                            <div className="wave waveTop wave2"></div>
-                        </div>
-                        <div className="waveWrapperInner bgMiddle">
-                            <div className="wave waveMiddle wave2"></div>
-                        </div>
-                        <div className="waveWrapperInner bgBottom">
-                            <div className="wave waveBottom wave1"></div>
-                        </div>
-                    </div>
-                    <div className='home_under_content'>
-                        <div className='home_left_content'>
-                            <AlanCard articleTotal={articleMetaByTopic[activeTopic]?.total} videoTotal={videoMetaByTopic[activeTopic]?.total}></AlanCard>
-                            <div className='home_search'>
-                                <Input
-                                    placeholder={getSearchPlaceholder()}
-                                    onChange={(e) => setKeywordByView(prev => ({ ...prev, [activeViewKey]: e.target.value }))}
-                                    value={keyword}
-                                    onPressEnter={handlePressEnter}
-                                    style={{ borderRadius: '7px', border: '2px solid hsl(236, 32%, 26%)' }}
-                                // suffix={<InfoCircleOutlined style={{color: 'rgba(0,0,0,.45)'}}/>}
-                                />
-                            </div>
-                            <MenuType clickMenu={clickMenu} activeType={menuType} options={activeMenuOptions}></MenuType>
-                        </div>
-                        <div className='home_middle_content'>
-                            <div className='home_topic_tabs' role='tablist' aria-label='内容分区'>
-                                {topicTabs.map(item => (
-                                    <button
-                                        type='button'
-                                        role='tab'
-                                        aria-selected={activeTopic === item.key}
-                                        className={`home_topic_tab ${activeTopic === item.key ? 'is-active' : ''}`}
-                                        key={item.key}
-                                        onClick={() => clickTopic(item.key)}
-                                    >
-                                        <span>{item.title}</span>
-                                        <small>{item.description}</small>
-                                    </button>
-                                ))}
-                            </div>
-                            <div className='home_list'>
-                                {renderHomeList()}
-                            </div>
-                            <div className='home_pagination'>
-                                {total > 10 ? <Pagination current={pageNum} total={total} onChange={changePage} pageSize={10} /> : null}
-                            </div>
-                        </div>
-                        {
-                            menuType !== 3 ?  (
-                                <div className='home_right_content'>
-                                    <Recommend type={menuType == 1 ? 1 : 3} articleList={recommendListData}></Recommend>
-                                    <TagCard tagList={activeTagList}></TagCard>
-                                </div>
-                            ) : null
-                        }
-                    </div>
+                    <ChatterZone
+                        topicTabs={topicTabs}
+                        activeTopic={activeTopic}
+                        activeMenuOptions={activeMenuOptions}
+                        menuType={menuType}
+                        keyword={keyword}
+                        total={total}
+                        pageNum={pageNum}
+                        userInfo={userInfo}
+                        articleTotal={articleMetaByTopic[activeTopic]?.total}
+                        videoTotal={videoMetaByTopic[activeTopic]?.total}
+                        activeArticleList={activeArticleList}
+                        activeVideoList={activeVideoList}
+                        activeCodeList={activeCodeList}
+                        recommendListData={recommendListData}
+                        activeTagList={activeTagList}
+                        searchedKeyword={searchedKeywords[activeViewKey] || ''}
+                        loading={loading}
+                        getSearchPlaceholder={getSearchPlaceholder}
+                        onKeywordChange={(value) => setKeywordByView(prev => ({ ...prev, [activeViewKey]: value }))}
+                        onSearch={handlePressEnter}
+                        onClickTopic={clickTopic}
+                        onClickMenu={clickMenu}
+                        onChangePage={changePage}
+                    />
                 </div>
             </div>
         </Spin>

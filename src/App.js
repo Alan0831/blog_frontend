@@ -4,8 +4,11 @@ import './App.css';
 import PublicComponent from './components/Public'
 import Header from './components/header';
 import { useEffect } from 'react';
+import { getValidUserInfo } from './utils/auth';
 function App() {
   useEffect(() => {
+    // 应用启动时校验一次本地登录态，token 过期则清理，避免刷新后仍显示已登录。
+    getValidUserInfo();
     let isDark = localStorage.getItem('isDark') || false;
     const body = document.querySelector('body');
     const header = document.getElementsByClassName('header')[0];

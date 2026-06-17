@@ -5,6 +5,7 @@ const SparkMD5 = require('spark-md5');
 import { request } from './request';
 import { message } from 'antd';
 import { createErrorByResponse } from './errorMessage';
+import { getAuthorizationHeader, handleAuthFailure, isAuthErrorResponse } from './auth';
 
 // 对视频切片
 const createChunks = (file) => {
@@ -61,6 +62,8 @@ const uploadChunks = async (chunks, fileHash, existChunks, progresscb) => {
         (formData) => () =>
             fetch("/commit/api/uploadChunks", {
                 method: "POST",
+                // 分片上传不手动设置 Content-Type，避免破坏浏览器自动生成的 multipart boundary。
+                headers: getAuthorizationHeader(),
                 body: formData,
             })
     );
@@ -78,11 +81,19 @@ const uploadChunks = async (chunks, fileHash, existChunks, progresscb) => {
             } catch (error) {
                 errorData = { errorCode: 'VIDEO_CHUNK_UPLOAD_FAILED' };
             }
+            if (result.status === 401 || isAuthErrorResponse(errorData)) {
+                // fetch 分片上传绕过 axios 拦截器，401 时同样清理登录态并引导重新登录。
+                handleAuthFailure(errorData, message);
+            }
             throw createErrorByResponse(errorData, '单片上传失败，请重试当前视频');
         }
         try {
             const data = await result.clone().json();
             if (data?.status && data.status != 200) {
+                if (isAuthErrorResponse(data)) {
+                    // 后端若用业务错误体返回 token 问题，也走统一登录态失效处理。
+                    handleAuthFailure(data, message);
+                }
                 throw createErrorByResponse(data, '单片上传失败，请重试当前视频');
             }
         } catch (error) {

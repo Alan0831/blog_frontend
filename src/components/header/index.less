@@ -116,6 +116,19 @@
   }
 }
 
+// 让下拉菜单里的“回复我的”和头像外层使用同一份未读数量提示。
+.header_notice_menu_item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 72px;
+  gap: 10px;
+
+  .ant-badge {
+    line-height: 1;
+  }
+}
+
 @media (max-width: 768px) {
   .header {
     padding: 0 12px;

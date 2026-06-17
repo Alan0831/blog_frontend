@@ -28,6 +28,9 @@ function loadlive2d(canvas_id, json_object_or_url, on_load) {
     // Replaces original l2d method 'loadlive2d' for Pio.
     // Heavily relies on pixi_live2d_display.
 
+    // 无 WebGL 环境下禁用 Live2D，保证页面主体不会被看板娘初始化错误影响。
+    if (pio_live2d_disabled) return null
+
     console.log("[Pio] Loading new model")
 
     const canvas = document.getElementById(canvas_id)
@@ -49,6 +52,13 @@ function loadlive2d(canvas_id, json_object_or_url, on_load) {
     let model = PIXI.live2d.Live2DModel.fromSync(json_object_or_url)
 
     model.once("load", () => {
+        const mountModel = () => {
+        // PIXI 初始化和模型加载是两条异步链路；模型先完成时延迟整个挂载流程，避免开发环境弹出 runtime overlay。
+        if (!app || !app.stage) {
+            setTimeout(mountModel, 80)
+            return
+        }
+
         app.stage.addChild(model)
 
         const vertical_factor = canvas.height / model.height
@@ -83,6 +93,9 @@ function loadlive2d(canvas_id, json_object_or_url, on_load) {
         })
         
         on_load(model)
+        }
+
+        mountModel()
     })
 
     return model
@@ -130,11 +143,18 @@ function _pio_initialize_pixi() {
 
     _pio_initialize_container()
 
-    app = new PIXI.Application({
-        view: document.getElementById("pio"),
-        transparent: true,
-        autoStart: true,
-    })
+    try {
+        app = new PIXI.Application({
+            view: document.getElementById("pio"),
+            transparent: true,
+            autoStart: true,
+        })
+    } catch (error) {
+        // 某些浏览器或自动化环境没有 WebGL，直接降级跳过 Live2D，避免阻塞 React 页面渲染。
+        pio_live2d_disabled = true
+        console.warn("[Pio] Live2D disabled:", error)
+        return
+    }
 
     pio_refresh_style()
 }
@@ -146,4 +166,5 @@ let pio_alignment = "right"
 
 
 let app
+let pio_live2d_disabled = false
 window.addEventListener("DOMContentLoaded", _pio_initialize_pixi)
