@@ -156,8 +156,8 @@ function ManagePage() {
     }
 
     return (
-        <div className='admin-edit-article'>
-            <div className='article_md'>
+        <div className='manage-edit-article'>
+            <div className='manage-article-md'>
                 <Input
                     placeholder='请输入题目标题'
                     className='title-input'

@@ -1,22 +1,62 @@
 .my_notice {
     .comment_outer {
         display: flex;
-        flex-direction: row;
-        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
         width: 100%;
         cursor: pointer;
+
         .comment_middle {
             display: flex;
-            flex-direction: row;
+            align-items: flex-start;
+            flex: 1 1 auto;
+            min-width: 0;
+
+            .comment_time {
+                flex: 0 0 158px;
+                white-space: nowrap;
+                color: #555;
+                line-height: 22px;
+            }
+
             .comment_content {
-                margin-left: 10px;
+                flex: 1 1 auto;
+                min-width: 0;
+                line-height: 22px;
+                overflow-wrap: anywhere;
+                word-break: break-word;
             }
         }
+
         .comment_noread {
+            flex: 0 0 42px;
+            text-align: right;
             color: red;
+            line-height: 22px;
+            white-space: nowrap;
         }
+
         .comment_hadnoread {
+            flex: 0 0 42px;
+            text-align: right;
             color: green;
+            line-height: 22px;
+            white-space: nowrap;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .comment_outer {
+            gap: 10px;
+
+            .comment_middle {
+                flex-direction: column;
+                gap: 4px;
+
+                .comment_time {
+                    flex-basis: auto;
+                }
+            }
         }
     }
 }

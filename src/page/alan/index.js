@@ -14,6 +14,7 @@ export default function Alan() {
     const [pageNum, setPageNum] = useState(1);
     const [total, setTotal] = useState(0);
     const userInfo = useSelector(state => state.user);
+    const friendCircleList = Array.isArray(listData) ? listData.filter(Boolean) : [];
 
     useEffect(() => {
         getArticleListFromAlan();
@@ -25,19 +26,19 @@ export default function Alan() {
         setLoading(true);
         try {
             const res = await request('/getFriendCircle', { data: obj });
-            if (res?.data.rows) {
-                console.log(res?.data.rows)
-                setData(res?.data.rows);
-                console.log(listData)
-                setTotal(res?.data.count);
-                setPageNum(res?.data.pageNum);
-                setLoading(false);
+            if (Array.isArray(res?.data?.rows)) {
+                setData(res.data.rows);
+                setTotal(res?.data?.count || 0);
+                setPageNum(res?.data?.pageNum || 1);
             } else {
-                setLoading(false);
+                setData([]);
+                setTotal(0);
+                setPageNum(1);
             }
         } catch (err) {
-            setLoading(false);
             console.error(err);
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -45,10 +46,10 @@ export default function Alan() {
         <Spin tip='加载中,请稍后...' spinning={loading}>
             <div className='alan-page'>
                 {
-                    listData.length > 0 ? (
+                    friendCircleList.length > 0 ? (
                         <Timeline mode="left">
                             {
-                                listData.map((item) => {
+                                friendCircleList.map((item) => {
                                     return (
                                         <Timeline.Item label={item.createdAt} key={item.id}>
                                             <div className='triangle' style={{ backgroundColor: getRandomColor(), opacity: 0.8 }}>

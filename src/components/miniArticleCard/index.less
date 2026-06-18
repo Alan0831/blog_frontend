@@ -1,4 +1,24 @@
 .minicard-outter {
+  &.is-missing {
+    .ant-card {
+      cursor: default;
+      border-style: dashed;
+    }
+
+    .minicard-main {
+      background: var(--color-canvas-soft);
+    }
+
+    .minicard-top img {
+      opacity: 0.58;
+      filter: grayscale(0.55);
+    }
+
+    .title {
+      color: var(--color-muted);
+    }
+  }
+
   .minicard-main {
     display: flex;
     flex-direction: column;

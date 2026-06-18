@@ -1,9 +1,48 @@
 import React, { useState, useEffect } from 'react'
-import { Table, Space, message, Popconfirm, Input, Form, Button, Image } from 'antd'
+import { Table, Space, message, Popconfirm, Input, Form, Button, Image, Select, DatePicker } from 'antd'
 import { request } from '../../utils/request';
 import { useNavigate } from 'react-router-dom';
 import { calcCommentsCount } from '../../utils'
 import './index.less'
+
+const { RangePicker } = DatePicker;
+
+const partitionOptions = [
+    { value: 'codeStudy', label: '学习' },
+    { value: 'chatter', label: '杂谈' },
+];
+
+const visibleTypeOptions = [
+    { value: 1, label: '全体用户可见' },
+    { value: 2, label: '视频加锁' },
+    { value: 3, label: '仅自己可见' },
+];
+
+const formatRangeDate = (date, boundary) => {
+    if (!date) return undefined;
+    const nextDate = boundary === 'start' ? date.startOf?.('day') || date : date.endOf?.('day') || date;
+    return nextDate.format('YYYY-MM-DD HH:mm:ss');
+}
+
+const normalizeSearchValues = (values = {}) => {
+    const range = values.createdAtRange || [];
+    const params = {
+        partition: values.partition,
+        author: values.author?.trim(),
+        title: values.title?.trim(),
+        visibleType: values.visibleType,
+        createdAtStart: formatRangeDate(range[0], 'start'),
+        createdAtEnd: formatRangeDate(range[1], 'end'),
+    };
+    return Object.keys(params).reduce((result, key) => {
+        if (params[key] !== undefined && params[key] !== '') result[key] = params[key];
+        return result;
+    }, {});
+}
+
+const getPartitionLabel = (value) => {
+    return partitionOptions.find(item => item.value === value)?.label || '-';
+}
 
 /**
  * 我的视频管理
@@ -12,20 +51,21 @@ function MyVideo(props) {
     const { userId } = props.userInfo;
     // const [userId, setUserId] = useState(props.userInfo.userId);
     const [dataList, setData] = useState([]);
-    const [articleClassName, setArticleClassName] = useState('');
-    const [articleClassOptions, setArticleClassOptions] = useState([]);
     const [pageNum, setPageNum] = useState(1);
     const [total, setTotal] = useState(0);
+    const [searchParams, setSearchParams] = useState({});
     const navigate = useNavigate();
-    const [form] = Form.useForm();
+    const [searchForm] = Form.useForm();
 
     useEffect(() => {
-        getMyVideoList();
+        setSearchParams({});
+        searchForm.resetFields();
+        getMyVideoList(1, 10, {});
         // searchArticleClassName();
     }, [props.userInfo.userId])
 
-    const getMyVideoList = async (pageNum = 1, pageSize = 10) => {
-        let res = await request('/getVideoList', {data: {userId, pageNum, pageSize}});
+    const getMyVideoList = async (pageNum = 1, pageSize = 10, nextSearchParams = searchParams) => {
+        let res = await request('/getVideoList', {data: {userId, pageNum, pageSize, ...nextSearchParams}});
         if(res.status === 200) {
             setData(res.data.rows);
             setTotal(res?.data.count);
@@ -39,7 +79,7 @@ function MyVideo(props) {
         let res = await request('/deleteVideo', {data: {videoId: id}});
         if(res.status === 200) {
             message.success('删除成功！');
-            getMyVideoList();
+            getMyVideoList(pageNum, 10);
         } else {
             message.error(res.errorMessage);
         }
@@ -96,6 +136,18 @@ function MyVideo(props) {
     //     }
     // }
 
+    const handleSearch = (values) => {
+        const nextSearchParams = normalizeSearchValues(values);
+        setSearchParams(nextSearchParams);
+        getMyVideoList(1, 10, nextSearchParams);
+    }
+
+    const resetSearch = () => {
+        searchForm.resetFields();
+        setSearchParams({});
+        getMyVideoList(1, 10, {});
+    }
+
     const columns = [
         {
             title: '标题',
@@ -130,8 +182,15 @@ function MyVideo(props) {
             key: 'visibleType',
             align: 'center',
             render: (text, record) => (
-                text == 1 ? '全体用户可见' : text == 2 ? '文章加锁' : '仅自己可见'
+                text == 1 ? '全体用户可见' : text == 2 ? '视频加锁' : '仅自己可见'
             ),
+        },
+        {
+            title: '分区',
+            dataIndex: 'partition',
+            key: 'partition',
+            align: 'center',
+            render: (text) => getPartitionLabel(text),
         },
         {
             title: '视频封面',
@@ -185,8 +244,8 @@ function MyVideo(props) {
     ]
 
     //  翻页
-    const changePage = (page) => {
-        getMyArticleList(page, 10);
+    const changePage = (page, pageSize) => {
+        getMyVideoList(page, pageSize);
     }
 
     const pagination = {
@@ -199,6 +258,35 @@ function MyVideo(props) {
 
     return (
         <div className='help-article'>
+            <div className='table-filter-panel'>
+                <Form
+                    layout='vertical'
+                    form={searchForm}
+                    onFinish={handleSearch}
+                >
+                    <div className='table-filter-grid'>
+                        <Form.Item label="分区" name="partition">
+                            <Select allowClear placeholder="请选择分区" options={partitionOptions} />
+                        </Form.Item>
+                        <Form.Item label="作者" name="author">
+                            <Input allowClear placeholder="请输入作者" />
+                        </Form.Item>
+                        <Form.Item label="标题" name="title">
+                            <Input allowClear placeholder="请输入标题" />
+                        </Form.Item>
+                        <Form.Item label="创建时间范围" name="createdAtRange">
+                            <RangePicker />
+                        </Form.Item>
+                        <Form.Item label="可见类型" name="visibleType">
+                            <Select allowClear placeholder="请选择可见类型" options={visibleTypeOptions} />
+                        </Form.Item>
+                    </div>
+                    <div className='table-filter-actions'>
+                        <Button type="primary" htmlType="submit">搜索</Button>
+                        <Button onClick={resetSearch}>重置</Button>
+                    </div>
+                </Form>
+            </div>
             {/* <div className='setArticleProps'>
                 <Form
                     layout='inline'
@@ -217,6 +305,7 @@ function MyVideo(props) {
                 dataSource={dataList}
                 rowKey={record => record.id}
                 pagination={pagination}
+                scroll={{ x: 'max-content' }}
             />
         </div>
     )

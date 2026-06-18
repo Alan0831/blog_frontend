@@ -42,8 +42,7 @@ function Article() {
             left: 0,
             behavior: 'smooth'
         });
-        setLoading(true);
-        Promise.allSettled([getArticle(), getRecommendArticleList(), getLikeArticleList()]).then(() => setLoading(false)).catch((err) => { setLoading(false); console.error(err); });
+        loadArticlePage();
     }, [id]);
 
     useEffect(() => {
@@ -58,8 +57,24 @@ function Article() {
     }, [article.content]);
 
     //  获取今日推荐文章列表
-    const getRecommendArticleList = async (pageNum = 1, pageSize = 10, keyword = '') => {
-        let obj = { pageNum, pageSize, keyword };
+    const loadArticlePage = async () => {
+        setLoading(true);
+        try {
+            const articleData = await getArticle();
+            const partition = articleData?.partition || 'codeStudy';
+            await Promise.allSettled([
+                getRecommendArticleList(1, 10, '', partition),
+                getLikeArticleList(partition),
+            ]);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const getRecommendArticleList = async (pageNum = 1, pageSize = 10, keyword = '', partition = 'codeStudy') => {
+        let obj = { pageNum, pageSize, keyword, partition };
         try {
             const res = await request('/getRecommendArticleList', { data: obj });
             if (res?.data.rows) {
@@ -71,9 +86,8 @@ function Article() {
     }
 
     //  获取猜你喜欢文章列表
-    const getLikeArticleList = async () => {
-        console.log(article);
-        let obj = { articleId: id };
+    const getLikeArticleList = async (partition = 'codeStudy') => {
+        let obj = { articleId: id, partition };
         try {
             const res = await request('/searchLikeArticle', { data: obj });
             if (res?.data) {
@@ -120,9 +134,11 @@ function Article() {
             console.log(images);
             setTagList(parseMaybeJsonArray(data.tagList));
             setAuthorInfo(data.user);
+            return data;
         } else {
             message.error(res.errorMessage);
         }
+        return null;
     }
 
     const replaceImgWithAntdImage = (str) => {

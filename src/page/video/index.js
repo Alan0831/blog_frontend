@@ -147,6 +147,19 @@ const normalizeQualitySources = (videoInfo = {}) => {
 };
 
 const getSelectedVideoSource = (qualitySources, selectedQuality, fallbackUrl, fallbackType) => {
+    if (isMasterPlaylistUrl(fallbackUrl)) {
+        if (selectedQuality !== 'auto') {
+            const matchedSource = qualitySources.find(item => item.quality === selectedQuality);
+            if (matchedSource) return matchedSource;
+        }
+
+        return {
+            quality: 'auto',
+            url: fallbackUrl,
+            sourceType: fallbackType || getVideoSourceType(fallbackUrl),
+        };
+    }
+
     if (selectedQuality !== 'auto') {
         const matchedSource = qualitySources.find(item => item.quality === selectedQuality);
         if (matchedSource) return matchedSource;
@@ -166,11 +179,45 @@ const getPlayerRepresentations = (player) => {
     return vhs.representations() || [];
 };
 
+const getPlayerVhs = (player) => {
+    const tech = typeof player?.tech === 'function' ? player.tech({ IWillNotUseThisInPlugins: true }) : null;
+    return tech?.vhs || tech?.hls || null;
+};
+
+const lockVhsPlaylist = (vhs, playlist) => {
+    if (!vhs || !playlist || typeof vhs.selectPlaylist !== 'function') return;
+    if (!vhs.__alanDefaultSelectPlaylist) {
+        vhs.__alanDefaultSelectPlaylist = vhs.selectPlaylist;
+    }
+    vhs.__alanLockedPlaylist = playlist;
+    vhs.selectPlaylist = function selectLockedPlaylist() {
+        return this.__alanLockedPlaylist || this.__alanDefaultSelectPlaylist?.();
+    };
+};
+
+const restoreVhsPlaylistSelector = (vhs) => {
+    if (!vhs?.__alanDefaultSelectPlaylist) return;
+    vhs.selectPlaylist = vhs.__alanDefaultSelectPlaylist;
+    delete vhs.__alanDefaultSelectPlaylist;
+    delete vhs.__alanLockedPlaylist;
+};
+
 const getQualityDisplayText = (quality) => NETWORK_QUALITY_TEXT[quality] || `${quality}P`;
 
 const getQualityMenuOptions = (supportedQualities = []) => {
     const supportedSet = new Set(supportedQualities.map(item => String(item)));
     return VIDEO_QUALITY_OPTIONS.filter(item => item.value === 'auto' || supportedSet.size === 0 || supportedSet.has(item.value));
+};
+
+const isMasterPlaylistUrl = (url = '') => url.split('?')[0].toLowerCase().endsWith('/master.m3u8');
+
+const getInferredQualitySources = (masterUrl = '') => {
+    if (!isMasterPlaylistUrl(masterUrl)) return [];
+    return ['360', '720', '1080'].map(quality => ({
+        quality,
+        url: masterUrl.replace(/master\.m3u8(\?.*)?$/i, `${quality}p/index.m3u8$1`),
+        sourceType: 'application/x-mpegURL',
+    }));
 };
 
 const resolveM3u8Url = (url, baseUrl) => {
@@ -179,15 +226,6 @@ const resolveM3u8Url = (url, baseUrl) => {
     } catch (error) {
         return url;
     }
-};
-
-const getInferredQualitySources = (masterUrl = '') => {
-    if (!masterUrl || !masterUrl.split('?')[0].toLowerCase().endsWith('/master.m3u8')) return [];
-    return ['360', '720', '1080'].map(quality => ({
-        quality,
-        url: masterUrl.replace(/master\.m3u8(\?.*)?$/i, `${quality}p/index.m3u8$1`),
-        sourceType: 'application/x-mpegURL',
-    }));
 };
 
 const parseMasterPlaylistSources = (playlistText = '', masterUrl = '') => {
@@ -240,6 +278,7 @@ function Video() {
     const [playerError, setPlayerError] = useState(false);
     const [selectedQuality, setSelectedQuality] = useState(() => getDefaultVideoQuality());
     const [activeQuality, setActiveQuality] = useState(() => getDefaultVideoQuality());
+    const [playerReloadKey, setPlayerReloadKey] = useState(0);
     const [hlsQualitySources, setHlsQualitySources] = useState([]);
     const [recommendVideoListData, setRecommendVideoList] = useState([]);
     const [videoInfo, setVideoInfo] = useState({
@@ -256,7 +295,7 @@ function Video() {
         sourceType: '',
     });
     const playerRef = useRef(null);
-    const videoElementRef = useRef(null);
+    const videoContainerRef = useRef(null);
     const selectedQualityRef = useRef(selectedQuality);
     const manualQualityRef = useRef(false);
     const resumePlaybackRef = useRef(null);
@@ -291,9 +330,16 @@ function Video() {
 
     const destroyVideo = () => {
         if (playerRef.current) {
+            try {
+                playerRef.current.pause();
+                playerRef.current.reset?.();
+            } catch (error) {
+                console.warn('reset video player failed', error);
+            }
             playerRef.current.dispose();
             playerRef.current = null;
         }
+        videoContainerRef.current?.replaceChildren();
     };
 
     useEffect(() => {
@@ -303,7 +349,7 @@ function Video() {
             behavior: 'smooth',
         });
         setLoading(true);
-        Promise.allSettled([getVideo(), getRecommendVideoList()])
+        loadVideoPage()
             .catch((err) => {
                 console.error(err);
                 message.error('视频详情加载失败，请稍后再试');
@@ -363,7 +409,7 @@ function Video() {
 
         initVideo(playableVideoUrl, poster, playableSourceType);
         return destroyVideo;
-    }, [playableVideoUrl, poster, playableSourceType, id]);
+    }, [playableVideoUrl, poster, playableSourceType, id, playerReloadKey]);
 
     useEffect(() => {
         if (playerRef.current) {
@@ -398,9 +444,15 @@ function Video() {
         return null;
     };
 
-    const getRecommendVideoList = async (pageNum = 1, pageSize = 8, keyword = '') => {
+    const loadVideoPage = async () => {
+        const nextVideoInfo = await getVideo();
+        const partition = nextVideoInfo?.partition || 'codeStudy';
+        await getRecommendVideoList(1, 8, '', partition);
+    };
+
+    const getRecommendVideoList = async (pageNum = 1, pageSize = 8, keyword = '', partition = 'codeStudy') => {
         try {
-            const res = await request('/getRecommendVideoList', { data: { pageNum, pageSize, keyword } });
+            const res = await request('/getRecommendVideoList', { data: { pageNum, pageSize, keyword, partition } });
             if (res?.data?.rows) {
                 setRecommendVideoList(res.data.rows.filter(item => String(item.id) !== String(id)));
             }
@@ -430,6 +482,7 @@ function Video() {
                 setSelectedQuality(nextQuality);
                 setActiveQuality(nextQuality);
                 setVideoInfo(nextVideoInfo);
+                return nextVideoInfo;
             } else {
                 message.error(res.errorMessage);
             }
@@ -437,6 +490,7 @@ function Video() {
             console.error(err);
             message.error('视频详情加载失败，请稍后再试');
         }
+        return null;
     };
 
     const updateCollection = () => {
@@ -573,6 +627,7 @@ function Video() {
     };
 
     const syncPlayerQuality = (player, quality) => {
+        const vhs = getPlayerVhs(player);
         const representations = getPlayerRepresentations(player);
         const hlsQualities = Array.from(new Set(
             representations
@@ -590,7 +645,15 @@ function Video() {
         }
 
         if (quality === 'auto') {
-            representations.forEach(item => item.enabled(true));
+            restoreVhsPlaylistSelector(vhs);
+            representations.forEach(item => {
+                if (item.playlist) {
+                    delete item.playlist.disabled;
+                } else {
+                    item.enabled(true);
+                }
+            });
+            vhs?.playlistController_?.fastQualityChange_?.();
             setActiveQuality('auto');
             renderQualityControl(player, quality, 'auto', supportedQualities);
             return;
@@ -609,10 +672,25 @@ function Video() {
             : heights.reduce((closestHeight, currentHeight) => (
                 Math.abs(currentHeight - targetHeight) < Math.abs(closestHeight - targetHeight) ? currentHeight : closestHeight
             ), heights[0]);
+        const targetRepresentation = representations.find(item => Number(item.height) === selectedHeight);
 
-        representations.forEach(item => {
-            item.enabled(Number(item.height) === selectedHeight);
-        });
+        if (targetRepresentation?.playlist && vhs?.playlistController_?.fastQualityChange_) {
+            representations.forEach(item => {
+                if (!item.playlist) return;
+                if (Number(item.height) === selectedHeight) {
+                    delete item.playlist.disabled;
+                } else {
+                    item.playlist.disabled = true;
+                }
+            });
+            lockVhsPlaylist(vhs, targetRepresentation.playlist);
+            vhs.playlistController_.fastQualityChange_(targetRepresentation.playlist);
+        } else {
+            restoreVhsPlaylistSelector(vhs);
+            representations.forEach(item => {
+                item.enabled(Number(item.height) === selectedHeight);
+            });
+        }
         setActiveQuality(String(selectedHeight));
         renderQualityControl(player, quality, String(selectedHeight), supportedQualities);
     };
@@ -625,26 +703,44 @@ function Video() {
             qualityControl.querySelector('.vjs-quality-trigger')?.setAttribute('aria-expanded', 'false');
         }
 
-        if (quality === selectedQuality) return;
+        if (quality === selectedQuality) {
+            if (playerRef.current) {
+                resumePlaybackRef.current = {
+                    time: playerRef.current.currentTime(),
+                    shouldPlay: !playerRef.current.paused(),
+                };
+            }
+            setPlayerReloadKey(prevKey => prevKey + 1);
+            return;
+        }
 
         if (playerRef.current) {
             resumePlaybackRef.current = {
                 time: playerRef.current.currentTime(),
                 shouldPlay: !playerRef.current.paused(),
             };
+        } else {
+            resumePlaybackRef.current = null;
         }
 
         manualQualityRef.current = true;
         setSelectedQuality(quality);
+        setPlayerReloadKey(prevKey => prevKey + 1);
     };
 
     const initVideo = (nextVideoUrl, nextPoster, nextSourceType) => {
         destroyVideo();
         setPlayerError(false);
-        if (!nextVideoUrl || !videoElementRef.current) {
+        if (!nextVideoUrl || !videoContainerRef.current) {
             setPlayerError(true);
             return;
         }
+
+        const videoElement = document.createElement('video');
+        videoElement.className = 'video-js vjs-default-skin alan-video-player';
+        videoElement.setAttribute('playsinline', 'true');
+        videoElement.setAttribute('webkit-playsinline', 'true');
+        videoContainerRef.current.appendChild(videoElement);
 
         const inferredType = nextSourceType || getVideoSourceType(nextVideoUrl);
         const source = {
@@ -652,7 +748,7 @@ function Video() {
             ...(inferredType ? { type: inferredType } : {}),
         };
 
-        const myPlayer = videojs(videoElementRef.current, {
+        const myPlayer = videojs(videoElement, {
             controls: true,
             poster: nextPoster || '',
             muted: false,
@@ -762,7 +858,7 @@ function Video() {
                             <div className='video-player-shell'>
                                 <div className='video-player-frame'>
                                     {videoUrl ? (
-                                        <video key={id} ref={videoElementRef} className='video-js vjs-default-skin alan-video-player' playsInline />
+                                        <div ref={videoContainerRef} className='video-js-host' />
                                     ) : (
                                         <div className='video-empty-player'>
                                             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description='视频地址暂不可用' />

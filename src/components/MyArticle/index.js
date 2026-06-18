@@ -1,9 +1,45 @@
 import React, { useState, useEffect } from 'react'
-import { Table, Space, message, Popconfirm, Input, Form, Button, Select } from 'antd'
+import { Table, Space, message, Popconfirm, Input, Form, Button, Select, DatePicker } from 'antd'
 import { request } from '../../utils/request';
 import { useNavigate } from 'react-router-dom';
 import { calcCommentsCount } from '../../utils'
 import './index.less'
+
+const { RangePicker } = DatePicker;
+
+const partitionOptions = [
+    { value: 'codeStudy', label: '学习' },
+    { value: 'chatter', label: '杂谈' },
+];
+
+const visibleTypeOptions = [
+    { value: 1, label: '全体用户可见' },
+    { value: 2, label: '文章加锁' },
+    { value: 3, label: '仅自己可见' },
+];
+
+const formatRangeDate = (date, boundary) => {
+    if (!date) return undefined;
+    const nextDate = boundary === 'start' ? date.startOf?.('day') || date : date.endOf?.('day') || date;
+    return nextDate.format('YYYY-MM-DD HH:mm:ss');
+}
+
+const normalizeSearchValues = (values = {}) => {
+    const range = values.createdAtRange || [];
+    const params = {
+        partition: values.partition,
+        articleclassId: values.articleclassId,
+        author: values.author?.trim(),
+        title: values.title?.trim(),
+        visibleType: values.visibleType,
+        createdAtStart: formatRangeDate(range[0], 'start'),
+        createdAtEnd: formatRangeDate(range[1], 'end'),
+    };
+    return Object.keys(params).reduce((result, key) => {
+        if (params[key] !== undefined && params[key] !== '') result[key] = params[key];
+        return result;
+    }, {});
+}
 
 /**
  * 我的文章管理
@@ -16,16 +52,20 @@ function MyArticle(props) {
     const [articleClassOptions, setArticleClassOptions] = useState([]);
     const [pageNum, setPageNum] = useState(1);
     const [total, setTotal] = useState(0);
+    const [searchParams, setSearchParams] = useState({});
     const navigate = useNavigate();
     const [form] = Form.useForm();
+    const [searchForm] = Form.useForm();
 
     useEffect(() => {
-        getMyArticleList();
+        setSearchParams({});
+        searchForm.resetFields();
+        getMyArticleList(1, 10, {});
         searchArticleClassName();
     }, [props.userInfo.userId])
 
-    const getMyArticleList = async (pageNum = 1, pageSize = 10) => {
-        let res = await request('/getArticleList', {data: {userId, pageNum, pageSize}});
+    const getMyArticleList = async (pageNum = 1, pageSize = 10, nextSearchParams = searchParams) => {
+        let res = await request('/getArticleList', {data: {userId, pageNum, pageSize, ...nextSearchParams}});
         if(res.status === 200) {
             setData(res.data.rows);
             setTotal(res?.data.count);
@@ -39,7 +79,7 @@ function MyArticle(props) {
         let res = await request('/deleteArticle', {data: {articleId: id}});
         if(res.status === 200) {
             message.success('删除成功！');
-            getMyArticleList();
+            getMyArticleList(pageNum, 10);
         } else {
             message.error(res.errorMessage);
         }
@@ -81,7 +121,7 @@ function MyArticle(props) {
             let res = await request('/setArticleClass', {data: {userId, articleId: record.id, oldClassId: record.articleclassId, classId: value}});
             if(res.status === 200) {
                 message.success('设置文章大类成功！');
-                getMyArticleList();
+                getMyArticleList(pageNum, 10);
             } else {
                 message.error(res.errorMessage);
             }
@@ -89,11 +129,23 @@ function MyArticle(props) {
             let res = await request('/setArticleClass', {data: {userId, oldClassId: -1, articleId: record.id, classId: value}});
             if(res.status === 200) {
                 message.success('设置文章大类成功！');
-                getMyArticleList();
+                getMyArticleList(pageNum, 10);
             } else {
                 message.error(res.errorMessage);
             }
         }
+    }
+
+    const handleSearch = (values) => {
+        const nextSearchParams = normalizeSearchValues(values);
+        setSearchParams(nextSearchParams);
+        getMyArticleList(1, 10, nextSearchParams);
+    }
+
+    const resetSearch = () => {
+        searchForm.resetFields();
+        setSearchParams({});
+        getMyArticleList(1, 10, {});
     }
 
     const columns = [
@@ -172,8 +224,8 @@ function MyArticle(props) {
     ]
 
     //  翻页
-    const changePage = (page) => {
-        getMyArticleList(page, 10);
+    const changePage = (page, pageSize) => {
+        getMyArticleList(page, pageSize);
     }
 
     const pagination = {
@@ -186,6 +238,38 @@ function MyArticle(props) {
 
     return (
         <div className='help-article'>
+            <div className='table-filter-panel'>
+                <Form
+                    layout='vertical'
+                    form={searchForm}
+                    onFinish={handleSearch}
+                >
+                    <div className='table-filter-grid'>
+                        <Form.Item label="分区" name="partition">
+                            <Select allowClear placeholder="请选择分区" options={partitionOptions} />
+                        </Form.Item>
+                        <Form.Item label="所属大类" name="articleclassId">
+                            <Select allowClear placeholder="请选择大类" options={articleClassOptions} />
+                        </Form.Item>
+                        <Form.Item label="作者" name="author">
+                            <Input allowClear placeholder="请输入作者" />
+                        </Form.Item>
+                        <Form.Item label="标题" name="title">
+                            <Input allowClear placeholder="请输入标题" />
+                        </Form.Item>
+                        <Form.Item label="创建时间范围" name="createdAtRange">
+                            <RangePicker />
+                        </Form.Item>
+                        <Form.Item label="可见类型" name="visibleType">
+                            <Select allowClear placeholder="请选择可见类型" options={visibleTypeOptions} />
+                        </Form.Item>
+                    </div>
+                    <div className='table-filter-actions'>
+                        <Button type="primary" htmlType="submit">搜索</Button>
+                        <Button onClick={resetSearch}>重置</Button>
+                    </div>
+                </Form>
+            </div>
             <div className='setArticleProps'>
                 <Form
                     layout='inline'
@@ -204,6 +288,7 @@ function MyArticle(props) {
                 dataSource={dataList}
                 rowKey={record => record.id}
                 pagination={pagination}
+                scroll={{ x: 'max-content' }}
             />
         </div>
     )

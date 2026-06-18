@@ -20,19 +20,23 @@ const headerHeight = 45;
 const NOTICE_RECONNECT_MAX_DELAY = 30000;
 
 // 根据当前站点协议选择 ws/wss，避免 https 页面下被浏览器拦截混合内容连接。
-const getNoticeSocketUrl = () => {
+const getNoticeSocketUrl = (token) => {
     const isLocal = ['localhost', '127.0.0.1'].includes(window.location.hostname);
-    if (isLocal) return 'ws://127.0.0.1:9998';
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    return `${protocol}://8.152.1.135:9998`;
+    const baseUrl = isLocal ? 'ws://127.0.0.1:9998' : `${protocol}://8.152.1.135:9998`;
+    return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
 }
 
 // 统一兼容 websocket、回复列表接口、手动同步传来的不同结构，最终只给 Badge 一个未读数字。
+// 返回 null 表示这不是一条通知数量消息，避免 websocket 心跳/普通文本把真实未读数覆盖成 0。
 const normalizeNoticeCount = (data) => {
-    if (typeof data === 'number') return Math.max(0, data);
+    if (data === null || data === undefined) return null;
+    if (typeof data === 'number') return Number.isFinite(data) ? Math.max(0, data) : null;
     if (typeof data === 'string') {
-        const count = Number(data);
-        return Number.isNaN(count) ? 0 : Math.max(0, count);
+        const text = data.trim();
+        if (!text) return null;
+        const count = Number(text);
+        return Number.isNaN(count) ? null : Math.max(0, count);
     }
     if (Array.isArray(data)) {
         return data.filter(item => item?.read === 0 || item?.read === '0' || item?.read === false).length;
@@ -43,8 +47,9 @@ const normalizeNoticeCount = (data) => {
         if (Array.isArray(data.rows)) return normalizeNoticeCount(data.rows);
         if (Array.isArray(data.data?.rows)) return normalizeNoticeCount(data.data.rows);
         if (Array.isArray(data.data)) return normalizeNoticeCount(data.data);
+        if (data.data && typeof data.data === 'object') return normalizeNoticeCount(data.data);
     }
-    return 0;
+    return null;
 }
 
 function Header() {
@@ -62,6 +67,9 @@ function Header() {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const location = useLocation();
+    const parsedNotice = Number(notice);
+    const noticeCount = Number.isFinite(parsedNotice) && parsedNotice > 0 ? Math.floor(parsedNotice) : 0;
+    const hasNotice = noticeCount > 0;
 
     const items = [
         {
@@ -106,7 +114,7 @@ function Header() {
             label: (
                 <div className='header_notice_menu_item' onClick={() => navigate('/help', { state: { key: '4' } })}>
                     <span>回复我的</span>
-                    <Badge count={notice} size="small" overflowCount={99} />
+                    {hasNotice ? <Badge count={noticeCount} size="small" overflowCount={99} /> : null}
                 </div>
             ),
             icon: <NotificationOutlined />,
@@ -198,7 +206,7 @@ function Header() {
             try {
                 const res = await request('/getNotice', { data: { userId: userInfo.userId } });
                 if (!ignore && res?.status === 200) {
-                    setNotice(normalizeNoticeCount(res?.data?.rows || res?.data));
+                    setNotice(normalizeNoticeCount(res?.data?.rows || res?.data) ?? 0);
                 }
             } catch (err) {
                 console.error('获取未读回复数量失败:', err);
@@ -230,7 +238,7 @@ function Header() {
 
         const connectNoticeSocket = () => {
             clearReconnectTimer();
-            const socket = new WebSocket(getNoticeSocketUrl());
+            const socket = new WebSocket(getNoticeSocketUrl(userInfo.token));
             noticeSocketRef.current = socket;
 
             socket.onopen = () => {
@@ -248,10 +256,12 @@ function Header() {
                 if (disposed || noticeSocketRef.current !== socket) return;
                 try {
                     // websocket 数据先安全解析，再归一化成未读数量，避免非 JSON 消息把页面打崩。
-                    setNotice(normalizeNoticeCount(JSON.parse(res.data)));
+                    const nextNotice = normalizeNoticeCount(JSON.parse(res.data));
+                    if (nextNotice !== null) setNotice(nextNotice);
                 } catch (error) {
                     console.warn('通知 websocket 返回了非 JSON 数据:', res.data);
-                    setNotice(normalizeNoticeCount(res.data));
+                    const nextNotice = normalizeNoticeCount(res.data);
+                    if (nextNotice !== null) setNotice(nextNotice);
                 }
             }
 
@@ -309,7 +319,8 @@ function Header() {
     //  监听notification变化
     useListener('getNotice', data => {
         // 回复页标记已读后会广播最新列表，这里统一换算成未读数字。
-        setNotice(normalizeNoticeCount(data));
+        const nextNotice = normalizeNoticeCount(data);
+        if (nextNotice !== null) setNotice(nextNotice);
     });
 
     //  退出登录
@@ -355,12 +366,19 @@ function Header() {
                     loginStatus ? (
                         <div style={{ display: 'flex', alignItems: 'center' }}>
                             <Dropdown menu={{ items }} placement='bottom'>
-                                <Badge count={notice} size="small" overflowCount={99}>
-                                    <div style={{ cursor: 'pointer', display: 'flex' }}>
-                                        <AppAvatar userInfo={userInfo} popoverVisible={false} />
-                                    </div>
-                                    {/* <Avatar src='bilan.jpeg' style={{ cursor: 'pointer' }} size={36} /> */}
-                                </Badge>
+                                {
+                                    hasNotice ? (
+                                        <Badge count={noticeCount} size="small" overflowCount={99}>
+                                            <div style={{ cursor: 'pointer', display: 'flex' }}>
+                                                <AppAvatar userInfo={userInfo} popoverVisible={false} />
+                                            </div>
+                                        </Badge>
+                                    ) : (
+                                        <div style={{ cursor: 'pointer', display: 'flex' }}>
+                                            <AppAvatar userInfo={userInfo} popoverVisible={false} />
+                                        </div>
+                                    )
+                                }
                             </Dropdown>
                             {
                                 headerPartList.map((item) => {

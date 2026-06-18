@@ -1,6 +1,56 @@
 
 .help-article {
+    .table-filter-panel {
+        margin: 24px 0;
+        padding: 18px 20px;
+        border: 1px solid #edf0f5;
+        border-radius: 8px;
+        background: #fff;
+
+        .ant-form-item {
+            margin-bottom: 0;
+        }
+    }
+
+    .table-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px 16px;
+
+        .ant-picker,
+        .ant-select,
+        .ant-input-affix-wrapper,
+        .ant-input {
+            width: 100%;
+        }
+    }
+
+    .table-filter-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 16px;
+    }
+
     .setArticleProps {
         margin: 30px 0;
+    }
+
+    @media (max-width: 768px) {
+        .table-filter-panel {
+            padding: 14px;
+        }
+
+        .table-filter-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .table-filter-actions {
+            justify-content: stretch;
+
+            .ant-btn {
+                flex: 1;
+            }
+        }
     }
 }
