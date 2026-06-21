@@ -51,6 +51,45 @@ const initConfig = {
     homePort: '3000' // 首页domain端口号
   },
   night: 'toggleNightMode()',
+  music: {
+    volume: 0.35,
+    autoplay: true,
+    random: true,
+    tracks: [
+      {
+        name: '狼之主',
+        src: 'https://music.163.com/song/media/outer/url?id=1996527639.mp3'
+      },
+      {
+        name: 'Reincarnation',
+        src: 'https://music.163.com/song/media/outer/url?id=4952765.mp3'
+      },
+      {
+        name: '登临意',
+        src: 'https://music.163.com/song/media/outer/url?id=2014221206.mp3'
+      },
+      {
+        name: '破缺对称',
+        src: 'https://music.163.com/song/media/outer/url?id=3376594026.mp3'
+      },
+      {
+        name: 'Mystic Light Quest',
+        src: 'https://music.163.com/song/media/outer/url?id=2612747239.mp3'
+      },
+      {
+        name: '离音',
+        src: 'https://music.163.com/song/media/outer/url?id=1361747616.mp3'
+      },
+      {
+        name: "Ne T'En Va Pas",
+        src: 'https://music.163.com/song/media/outer/url?id=19107755.mp3'
+      },
+      {
+        name: "Ich Lieb' Dich Immer Noch So Sehr",
+        src: 'https://music.163.com/song/media/outer/url?id=20036323.mp3'
+      }
+    ]
+  },
   model: ['/live2d/Diana/Diana.model3.json', '/live2d/Ava/Ava.model3.json'],
   tips: true,
   onModelLoad: onModelLoad

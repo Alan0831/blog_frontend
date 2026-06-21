@@ -94,6 +94,21 @@
   text-align: center;
   margin-bottom: 0.5em;
   background-size: 100%;
+  border-radius: 50%;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+}
+
+.pio-action span:not(.pio-music):hover {
+  transform: scale(1.08);
+}
+
+.pio-action span:not(.pio-music):active {
+  transform: scale(0.94);
+}
+
+.pio-action span:focus-visible {
+  outline: 2px solid #d99a2b;
+  outline-offset: 2px;
 }
 
 .pio-action .pio-home {
@@ -110,6 +125,156 @@
 
 .pio-action .pio-info {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 500 500' xmlns='http://www.w3.org/2000/svg'%3E%3Crect transform='rotate(45.001 238.211 363.575)' x='29.285' y='22.411' width='273.903' height='505.038' rx='70' ry='70' fill='%23dcdcdc'/%3E%3Cpath d='M218.543 249.999l-47.186 47.186c-8.987 8.988-8.987 22.47 0 31.457 8.988 8.988 22.47 8.988 31.457 0L250 281.456l15.728 15.729c17.976 17.976 17.976 46.063 0 64.038l-64.037 64.038c-17.976 17.975-46.063 17.975-64.038 0l-64.038-64.038c-17.975-17.975-17.975-46.062 0-64.038l64.038-64.037c17.975-17.976 46.062-17.976 64.038 0l16.852 16.851z' fill='%23fff'/%3E%3Cpath d='M281.457 249.999l47.186-47.186c8.988-8.987 8.988-22.469 0-31.457-8.987-8.987-22.469-8.987-31.457 0L250 218.542l-15.729-15.729c-17.975-17.975-17.975-46.062 0-64.037l64.038-64.038c17.975-17.975 46.062-17.975 64.038 0l64.037 64.038c17.977 17.975 17.977 46.062 0 64.037l-64.037 64.038c-17.976 17.976-46.063 17.976-64.038 0l-16.852-16.852z' fill='%2361a3e0'/%3E%3C/svg%3E");
+}
+
+.pio-action .pio-music {
+  position: relative;
+  overflow: visible;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 500 500' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M392 48v283.5c0 58-46.5 104.5-104 104.5-45.8 0-83-29.1-83-65s37.2-65 83-65c13.8 0 26.8 2.6 38 7.2V142l-176 39v190.5C150 429.5 103.5 476 46 476c-45.8 0-83-29.1-83-65s37.2-65 83-65c13.8 0 26.8 2.6 38 7.2V116l308-68z' transform='translate(45 -12)' fill='%23D99A2B'/%3E%3C/svg%3E");
+}
+
+.pio-action .pio-music.is-playing {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 500 500' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='105' y='65' width='105' height='370' rx='28' fill='%23D99A2B'/%3E%3Crect x='290' y='65' width='105' height='370' rx='28' fill='%23D99A2B'/%3E%3C/svg%3E");
+  animation: pio-music-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pio-music-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pio-action .pio-music.is-playing {
+    animation: none;
+  }
+}
+
+.pio-music-panel {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 12px);
+  width: 176px;
+  box-sizing: border-box;
+  padding: 11px 12px 12px;
+  color: #493f38;
+  text-align: left;
+  background: rgba(255, 253, 249, 0.96);
+  border: 1px solid rgba(217, 154, 43, 0.24);
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(94, 68, 42, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate(8px, -50%);
+  transition: opacity 0.22s ease, visibility 0.22s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pio-music-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 100%;
+  width: 13px;
+  height: 100%;
+}
+
+.pio-music:hover .pio-music-panel,
+.pio-music:focus-within .pio-music-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate(0, -50%);
+}
+
+.pio-container.right .pio-music-panel {
+  right: calc(100% + 12px);
+  left: auto;
+  transform: translate(-8px, -50%);
+}
+
+.pio-container.right .pio-music-panel::before {
+  right: auto;
+  left: 100%;
+}
+
+.pio-container.right .pio-music:hover .pio-music-panel,
+.pio-container.right .pio-music:focus-within .pio-music-panel {
+  transform: translate(0, -50%);
+}
+
+.pio-music-panel__name {
+  overflow: hidden;
+  color: #342c27;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pio-music-panel__status {
+  margin-top: 2px;
+  color: #8a7d73;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.pio-music-panel__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+}
+
+.pio-music-control {
+  width: 36px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  cursor: pointer;
+  background-color: #f3ece3;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 16px;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.22s ease;
+}
+
+.pio-music-control:hover {
+  background-color: #eadcc9;
+  transform: translateY(-1px);
+}
+
+.pio-music-control:active {
+  transform: scale(0.94);
+}
+
+.pio-music-control:focus-visible {
+  outline: 2px solid #d99a2b;
+  outline-offset: 2px;
+}
+
+.pio-music-control--previous {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 5v14M19 6.5 9 12l10 5.5z' fill='none' stroke='%236C5541' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.pio-music-control--play {
+  width: 42px;
+  color: #fff;
+  background-color: #d99a2b;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m9 6 9 6-9 6z' fill='%23fff'/%3E%3C/svg%3E");
+}
+
+.pio-music-control--play:hover {
+  background-color: #c9881f;
+}
+
+.pio-music-control--play.is-playing {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='7' y='6' width='3.5' height='12' rx='1' fill='%23fff'/%3E%3Crect x='13.5' y='6' width='3.5' height='12' rx='1' fill='%23fff'/%3E%3C/svg%3E");
+}
+
+.pio-music-control--next {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M18 5v14M5 6.5 15 12 5 17.5z' fill='none' stroke='%236C5541' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 
 .pio-action .pio-night {

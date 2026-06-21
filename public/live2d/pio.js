@@ -59,6 +59,7 @@ var Paul_Pio = function (prop) {
     },
     // 移除方法
     destroy: function () {
+      musicPlayer.stop();
       that.initHidden();
       localStorage.setItem('posterGirl', 0);
     },
@@ -76,6 +77,7 @@ var Paul_Pio = function (prop) {
   var elements = {
     home: modules.create('span', { class: 'pio-home' }),
     skin: modules.create('span', { class: 'pio-skin' }),
+    music: modules.create('span', { class: 'pio-music' }),
     // info: modules.create('span', { class: 'pio-info' }),
     night: modules.create('span', { class: 'pio-night' }),
     close: modules.create('span', { class: 'pio-close' }),
@@ -85,6 +87,179 @@ var Paul_Pio = function (prop) {
   var dialog = modules.create('div', { class: 'pio-dialog' });
   current.body.appendChild(dialog);
   current.body.appendChild(elements.show);
+
+  var musicPanel = modules.create('div', { class: 'pio-music-panel' });
+  var musicName = modules.create('div', { class: 'pio-music-panel__name' });
+  var musicStatus = modules.create('div', { class: 'pio-music-panel__status' });
+  var musicControls = modules.create('div', { class: 'pio-music-panel__controls' });
+  var previousButton = modules.create('button', { class: 'pio-music-control pio-music-control--previous' });
+  var playButton = modules.create('button', { class: 'pio-music-control pio-music-control--play' });
+  var nextButton = modules.create('button', { class: 'pio-music-control pio-music-control--next' });
+
+  musicPanel.setAttribute('aria-label', '音乐播放器');
+  previousButton.type = 'button';
+  previousButton.title = '上一首';
+  previousButton.setAttribute('aria-label', '上一首');
+  playButton.type = 'button';
+  playButton.title = '播放';
+  playButton.setAttribute('aria-label', '播放');
+  nextButton.type = 'button';
+  nextButton.title = '下一首';
+  nextButton.setAttribute('aria-label', '下一首');
+  musicControls.appendChild(previousButton);
+  musicControls.appendChild(playButton);
+  musicControls.appendChild(nextButton);
+  musicPanel.appendChild(musicName);
+  musicPanel.appendChild(musicStatus);
+  musicPanel.appendChild(musicControls);
+  elements.music.appendChild(musicPanel);
+
+  // 音乐控制器：歌曲页地址不能直接播放，配置中使用对应歌曲 ID 的媒体地址。
+  var musicPlayer = (function () {
+    var musicConfig = prop.music || {};
+    var tracks = Array.isArray(musicConfig.tracks) ? musicConfig.tracks.filter(function (track) {
+      return track && track.src;
+    }) : (musicConfig.src ? [{ name: musicConfig.name || '未命名音乐', src: musicConfig.src }] : []);
+    var audio = tracks.length ? new Audio() : null;
+    var currentIndex = musicConfig.random && tracks.length ? Math.floor(Math.random() * tracks.length) : 0;
+    var playing = false;
+    var loading = false;
+    var waitingForInteraction = false;
+
+    function currentTrack() {
+      return tracks[currentIndex] || null;
+    }
+
+    function updateView(statusText) {
+      var track = currentTrack();
+      elements.music.classList.toggle('is-playing', playing);
+      playButton.classList.toggle('is-playing', playing);
+      elements.music.setAttribute('aria-label', playing ? '暂停音乐' : '播放音乐');
+      elements.music.setAttribute('title', playing ? '暂停音乐' : '播放音乐');
+      playButton.setAttribute('aria-label', playing ? '暂停' : '播放');
+      playButton.setAttribute('title', playing ? '暂停' : '播放');
+      musicName.textContent = track ? track.name : '暂无可播放音乐';
+      musicStatus.textContent = statusText || (loading ? '正在加载' : (playing ? '正在播放' : '已暂停'));
+    }
+
+    function loadCurrentTrack() {
+      if (!audio || !currentTrack()) return false;
+      audio.src = currentTrack().src;
+      audio.volume = Number(musicConfig.volume || 0.35);
+      audio.load();
+      updateView();
+      return true;
+    }
+
+    function clearInteractionFallback() {
+      if (!waitingForInteraction) return;
+      waitingForInteraction = false;
+      document.removeEventListener('pointerdown', resumeAfterInteraction);
+      document.removeEventListener('keydown', resumeAfterInteraction);
+    }
+
+    function resumeAfterInteraction(event) {
+      clearInteractionFallback();
+      // 点击播放器自身时交给对应按钮处理，避免同一次点击触发两次播放切换。
+      if (elements.music.contains(event.target)) return;
+      play(false).then(function (started) {
+        if (started) modules.render('正在播放：' + currentTrack().name);
+      });
+    }
+
+    function waitForInteraction() {
+      if (waitingForInteraction) return;
+      waitingForInteraction = true;
+      updateView('等待首次交互');
+      document.addEventListener('pointerdown', resumeAfterInteraction);
+      document.addEventListener('keydown', resumeAfterInteraction);
+    }
+
+    function play(isAutoplay) {
+      if (!audio || !currentTrack()) {
+        updateView('播放列表为空');
+        modules.render('还没有配置可播放的音乐');
+        return Promise.resolve(false);
+      }
+
+      if (!audio.src && !loadCurrentTrack()) return Promise.resolve(false);
+      loading = true;
+      updateView();
+      return audio.play().then(function () {
+        clearInteractionFallback();
+        loading = false;
+        playing = true;
+        updateView();
+        return true;
+      }).catch(function (error) {
+        loading = false;
+        playing = false;
+        if (isAutoplay && error && error.name === 'NotAllowedError') {
+          waitForInteraction();
+          return false;
+        }
+        updateView('加载失败');
+        modules.render('音乐加载失败，可能受到网易云版权或外链限制');
+        return false;
+      });
+    }
+
+    function pause(showMessage) {
+      clearInteractionFallback();
+      playing = false;
+      if (audio) audio.pause();
+      loading = false;
+      updateView();
+      if (showMessage) modules.render('音乐暂停啦，想听的时候再叫我~');
+    }
+
+    function toggle() {
+      if (playing) {
+        pause(true);
+        return;
+      }
+
+      play(false).then(function (started) {
+        if (started) modules.render('正在播放：' + currentTrack().name);
+      });
+    }
+
+    function changeTrack(step, autoplay) {
+      if (!tracks.length) return;
+      currentIndex = (currentIndex + step + tracks.length) % tracks.length;
+      if (audio) audio.pause();
+      playing = false;
+      loading = false;
+      loadCurrentTrack();
+      modules.render('已切换到：' + currentTrack().name);
+      if (autoplay) play(false);
+    }
+
+    if (audio) {
+      audio.preload = 'none';
+      audio.addEventListener('ended', function () {
+        changeTrack(1, true);
+      });
+      loadCurrentTrack();
+      if (musicConfig.autoplay && localStorage.getItem('posterGirl') !== '0') {
+        window.setTimeout(function () {
+          play(true).then(function (started) {
+            if (started) modules.render('随机播放：' + currentTrack().name);
+          });
+        }, 0);
+      }
+    } else {
+      updateView('播放列表为空');
+    }
+
+    return {
+      toggle: toggle,
+      previous: function () { changeTrack(-1, playing); },
+      next: function () { changeTrack(1, playing); },
+      stop: function () { pause(false); },
+      isPlaying: function () { return playing; }
+    };
+  })();
 
   /* - 提示操作 */
   var action = {
@@ -153,6 +328,38 @@ var Paul_Pio = function (prop) {
         prop.content.skin && prop.content.skin[0] ? modules.render(prop.content.skin[0]) : modules.render('想看看我的新衣服吗？');
       };
       if (prop.model.length > 1) current.menu.appendChild(elements.skin);
+
+      // 播放 / 暂停音乐
+      if (prop.music !== false) {
+        elements.music.setAttribute('role', 'button');
+        elements.music.setAttribute('tabindex', '0');
+        elements.music.onclick = function (event) {
+          if (event.target !== elements.music) return;
+          musicPlayer.toggle();
+        };
+        elements.music.onkeydown = function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            musicPlayer.toggle();
+          }
+        };
+        elements.music.onmouseenter = function () {
+          modules.render(musicPlayer.isPlaying() ? '要暂停音乐吗？' : '要来一点音乐吗？');
+        };
+        previousButton.onclick = function (event) {
+          event.stopPropagation();
+          musicPlayer.previous();
+        };
+        playButton.onclick = function (event) {
+          event.stopPropagation();
+          musicPlayer.toggle();
+        };
+        nextButton.onclick = function (event) {
+          event.stopPropagation();
+          musicPlayer.next();
+        };
+        current.menu.appendChild(elements.music);
+      }
 
       // 关于我
       // elements.info.onclick = function () {
