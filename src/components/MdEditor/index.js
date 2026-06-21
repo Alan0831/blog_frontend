@@ -22,6 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { request } from '../../utils/request';
 import { getAuthorizationHeader, handleAuthFailure, isAuthErrorResponse } from '../../utils/auth';
+import { getAjaxHeaders, sanitizeRichText } from '../../utils/security';
 import './index.less';
 
 const { CheckableTag } = Tag;
@@ -70,7 +71,8 @@ const partitionOptions = [
 
 function getPlainTextFromHtml(html) {
   const box = document.createElement('div');
-  box.innerHTML = html || '';
+  // 提取纯文本前先净化 HTML，避免恶意标签在临时 DOM 中被解析成可执行节点。
+  box.innerHTML = sanitizeRichText(html || '');
   return box.textContent.replace(/\u00a0/g, ' ').trim();
 }
 
@@ -245,7 +247,8 @@ function MdEditor(props) {
     const originalArticleCover = props.articleInfo?.articleCover || '';
     const payload = {
       title: title.trim(),
-      content,
+      // 发布前先做一层前端净化；后端仍必须再次校验，前端这层主要保护预览和历史脏数据回流。
+      content: sanitizeRichText(content),
       authorId,
       tagList: selectedTags,
       partition,
@@ -347,6 +350,8 @@ function MdEditor(props) {
     const res = await axios.post('/commit/api/uploadImage', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
+        // 图片直传绕过 request 封装，手动带上 AJAX 标识和登录头。
+        ...getAjaxHeaders('post'),
         ...getAuthorizationHeader(),
       },
     }).catch((error) => {

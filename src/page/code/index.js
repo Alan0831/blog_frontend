@@ -6,6 +6,7 @@ import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 import { EditOutlined, EyeOutlined, CommentOutlined, TagOutlined, StarOutlined, StarTwoTone } from '@ant-design/icons';
 import CodeMirrorComponent from '../../components/codeMirror';
+import { sanitizeRichText } from '../../utils/security';
 
 /**
  * 题目内容
@@ -41,7 +42,8 @@ function Code() {
         let res = await request('/findCodeTopicById', { data: { id: parseInt(id), owner: parseInt(userInfo.userId) } });
         if (res.status == 200) {
             let data = res.data;
-            data.content = data.content.replace(/(\n|\r|\r\n|↵)/g, '<br />');
+            // 题目描述会走 dangerouslySetInnerHTML，渲染前必须净化历史内容和接口返回内容。
+            data.content = sanitizeRichText((data.content || '').replace(/(\n|\r|\r\n|↵)/g, '<br />'));
             setCodeTopic(data);
             // setTagList(JSON.parse(data.tagList));
             // setAuthorInfo(data.user);

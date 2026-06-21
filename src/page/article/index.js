@@ -9,6 +9,7 @@ import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 import { EditOutlined, EyeOutlined, CommentOutlined, TagOutlined, StarOutlined, StarTwoTone } from '@ant-design/icons';
 import { calcCommentsCount, normalizeComments, parseMaybeJsonArray } from '../../utils';
+import { sanitizeRichText } from '../../utils/security';
 import { clickPreview } from '../../utils/imgreview';
 import 'react-quill/dist/quill.snow.css';
 import Director from '../../components/director';
@@ -125,6 +126,8 @@ function Article() {
             let data = res.data;
             data.content = (data.content || '').replace(/(\n|\r|\r\n|↵)/g, '<br />');
             data.content = replaceImgWithAntdImage(data.content);
+            // 后端返回的是可渲染 HTML，进入 dangerouslySetInnerHTML 前必须按白名单净化。
+            data.content = sanitizeRichText(data.content);
             let isHaveDirector = data.content.includes('<ol>');
             const pagedComments = await getComments();
             data.comments = pagedComments !== null ? pagedComments : normalizeComments(data);

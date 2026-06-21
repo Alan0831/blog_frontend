@@ -308,7 +308,13 @@
   font-size: 12px;
   font-weight: 700;
 
-  // 处理状态按上传/转码/成功/失败分色，用户可以快速判断是否能发布
+  // 处理状态按排队/上传/处理/成功/失败分色，用户可以快速判断是否能发布。
+  &.is-queued {
+    color: #8a6a2f;
+    background: rgba(255, 247, 225, 0.82);
+    border-color: rgba(214, 162, 72, 0.34);
+  }
+
   &.is-processing,
   &.is-uploading {
     color: #557b9e;

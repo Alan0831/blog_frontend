@@ -42,11 +42,12 @@ var Paul_Pio = function (prop) {
     // 创建对话框方法
     render: function (text) {
       if (text.constructor === Array) {
-        dialog.innerHTML = modules.rand(text);
+        // 看板提示只按纯文本展示，避免文章标题、链接文本等外部内容拼进 innerHTML 后触发 XSS。
+        dialog.textContent = modules.rand(text);
       } else if (text.constructor === String) {
-        dialog.innerHTML = text;
+        dialog.textContent = text;
       } else {
-        dialog.innerHTML = '输入内容出现问题了 X_X';
+        dialog.textContent = '输入内容出现问题了 X_X';
       }
 
       dialog.classList.add('active');
@@ -165,7 +166,15 @@ var Paul_Pio = function (prop) {
       // 夜间模式
       if (prop.night) {
         elements.night.onclick = function () {
-          eval(prop.night);
+          // 不使用 eval 执行配置字符串，只允许调用全局无参函数，例如 toggleNightMode()。
+          if (typeof prop.night === 'function') {
+            prop.night();
+            return;
+          }
+
+          const match = String(prop.night).match(/^([A-Za-z_$][\w$]*)\(\)$/);
+          const nightHandler = match && window[match[1]];
+          if (typeof nightHandler === 'function') nightHandler();
         };
         elements.night.onmouseover = function () {
           localStorage.getItem('isDark') == 'true' ? modules.render('克里斯开下灯') : modules.render('克里斯关下灯');

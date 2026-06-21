@@ -28,14 +28,7 @@ const getVideoSourceType = (url = '') => {
     return '';
 };
 
-const VIDEO_QUALITY_OPTIONS = [
-    { value: '1080', label: '1080P 高清' },
-    { value: '720', label: '720P 准高清' },
-    { value: '360', label: '360P 流畅' },
-    { value: 'auto', label: '自动' },
-];
-
-const NETWORK_QUALITY_TEXT = {
+const QUALITY_LABEL_MAP = {
     360: '360P 流畅',
     720: '720P 准高清',
     1080: '1080P 高清',
@@ -71,6 +64,8 @@ const getDefaultVideoQuality = () => {
 
 const normalizeQuality = (quality) => {
     const text = String(quality || '').toLowerCase();
+    const resolutionMatch = text.match(/(?:^|x)(\d{3,4})p?$/) || text.match(/(\d{3,4})p?/);
+    if (resolutionMatch?.[1]) return resolutionMatch[1];
     if (text.includes('1080')) return '1080';
     if (text.includes('720')) return '720';
     if (text.includes('360')) return '360';
@@ -202,23 +197,28 @@ const restoreVhsPlaylistSelector = (vhs) => {
     delete vhs.__alanLockedPlaylist;
 };
 
-const getQualityDisplayText = (quality) => NETWORK_QUALITY_TEXT[quality] || `${quality}P`;
+const getQualityDisplayText = (quality) => QUALITY_LABEL_MAP[quality] || `${quality}P`;
 
 const getQualityMenuOptions = (supportedQualities = []) => {
-    const supportedSet = new Set(supportedQualities.map(item => String(item)));
-    return VIDEO_QUALITY_OPTIONS.filter(item => item.value === 'auto' || supportedSet.size === 0 || supportedSet.has(item.value));
+    const qualities = Array.from(new Set(
+        supportedQualities
+            .map(item => normalizeQuality(item))
+            .filter(Boolean)
+    )).sort((a, b) => Number(b) - Number(a));
+
+    // 后端现在可能只生成一档 HLS，只有一档时隐藏清晰度选择，避免给用户不存在的选项。
+    if (qualities.length <= 1) return [];
+
+    return [
+        { value: 'auto', label: QUALITY_LABEL_MAP.auto },
+        ...qualities.map(item => ({
+            value: item,
+            label: getQualityDisplayText(item),
+        })),
+    ];
 };
 
 const isMasterPlaylistUrl = (url = '') => url.split('?')[0].toLowerCase().endsWith('/master.m3u8');
-
-const getInferredQualitySources = (masterUrl = '') => {
-    if (!isMasterPlaylistUrl(masterUrl)) return [];
-    return ['360', '720', '1080'].map(quality => ({
-        quality,
-        url: masterUrl.replace(/master\.m3u8(\?.*)?$/i, `${quality}p/index.m3u8$1`),
-        sourceType: 'application/x-mpegURL',
-    }));
-};
 
 const resolveM3u8Url = (url, baseUrl) => {
     try {
@@ -252,8 +252,7 @@ const parseMasterPlaylistSources = (playlistText = '', masterUrl = '') => {
     }
 
     return sources.filter((item, index, list) => (
-        ['360', '720', '1080'].includes(item.quality)
-        && list.findIndex(source => source.quality === item.quality) === index
+        list.findIndex(source => source.quality === item.quality) === index
     ));
 };
 
@@ -315,8 +314,8 @@ function Video() {
     } = videoInfo;
     const qualitySources = useMemo(() => {
         const explicitSources = normalizeQualitySources(videoInfo);
-        const inferredSources = hlsQualitySources.length > 0 ? hlsQualitySources : getInferredQualitySources(videoUrl);
-        return [...explicitSources, ...inferredSources].filter((item, index, list) => (
+        // 不再根据 master.m3u8 路径猜测 360/720/1080，清晰度只来自后端显式列表或 HLS manifest 实际内容。
+        return [...explicitSources, ...hlsQualitySources].filter((item, index, list) => (
             list.findIndex(source => source.quality === item.quality) === index
         ));
     }, [hlsQualitySources, videoInfo, videoUrl]);
@@ -568,6 +567,13 @@ function Video() {
         if (!controlBar) return;
 
         let control = controlBar.querySelector('.vjs-quality-control');
+        const qualityOptions = getQualityMenuOptions(supportedQualities);
+        if (!qualityOptions.length) {
+            // 实际只有一档或未解析到档位时不展示清晰度按钮，避免误导用户可切换不存在的资源。
+            control?.remove();
+            return;
+        }
+
         if (!control) {
             control = document.createElement('div');
             control.className = 'vjs-quality-control vjs-control';
@@ -590,7 +596,7 @@ function Video() {
         menu.setAttribute('role', 'menu');
         menu.setAttribute('aria-label', '视频清晰度');
 
-        getQualityMenuOptions(supportedQualities).forEach(item => {
+        qualityOptions.forEach(item => {
             const menuItem = document.createElement('button');
             menuItem.type = 'button';
             menuItem.className = `vjs-quality-menu-item ${item.value === selected || item.value === active ? 'is-active' : ''}`;

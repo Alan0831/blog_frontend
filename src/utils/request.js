@@ -7,6 +7,7 @@ import {
     handleAuthFailure,
     isAuthErrorResponse,
 } from './auth';
+import { getAjaxHeaders } from './security';
 const initOptions = {
     headers: {
         'Range': 'bytes=0-99',
@@ -36,6 +37,8 @@ instance.interceptors.request.use(
     config => {
         // 需要登录态的接口统一使用后端推荐的 Authorization Bearer 头。
         config.headers = config.headers || {};
+        // 非安全方法保留 AJAX 标识；真正的鉴权和跨站防护依赖 Authorization Bearer token。
+        Object.assign(config.headers, getAjaxHeaders(config.method));
         Object.assign(config.headers, getAuthorizationHeader());
         return config
     },
@@ -68,6 +71,10 @@ export function request(url, options = {}) {
         instance({
             url,
             method,
+            headers: {
+                ...getAjaxHeaders(method),
+                ...(options.headers || {}),
+            },
             data: method === 'get' ? undefined : { ...options.data },
             params: method === 'get' ? { ...options.data, ...options.params } : options.params,
             responseType: options.responseType ? options.responseType : 'json'

@@ -156,7 +156,7 @@ function onModelLoad(model) {
     ];
   } else if (modelNmae === 'Ava') {
     container.dataset.model = 'Ava';
-    initConfig.content.skin[1] = ['我是<s>拉胯</s>Gamer担当 向晚 AvA~'];
+    initConfig.content.skin[1] = ['我是拉胯 Gamer 担当 向晚 AvA~'];
     playAction({
       motion: 'Tap左眼',
       from: {

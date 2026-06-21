@@ -6,6 +6,7 @@ import { request } from './request';
 import { message } from 'antd';
 import { createErrorByResponse } from './errorMessage';
 import { getAuthorizationHeader, handleAuthFailure, isAuthErrorResponse } from './auth';
+import { getAjaxHeaders } from './security';
 
 // 对视频切片
 const createChunks = (file) => {
@@ -63,7 +64,11 @@ const uploadChunks = async (chunks, fileHash, existChunks, progresscb) => {
             fetch("/commit/api/uploadChunks", {
                 method: "POST",
                 // 分片上传不手动设置 Content-Type，避免破坏浏览器自动生成的 multipart boundary。
-                headers: getAuthorizationHeader(),
+                // fetch 不经过 axios 拦截器，AJAX 标识与登录头需要在这里显式补齐。
+                headers: {
+                    ...getAjaxHeaders('post'),
+                    ...getAuthorizationHeader(),
+                },
                 body: formData,
             })
     );
@@ -176,7 +181,7 @@ const getVideoProcessStatus = async (fileHash) => {
     }
 };
 
-// 轮询后端 processing 状态，只有 success 才把 master.m3u8 交给业务表单，failed 则明确提示失败原因
+// 轮询后端排队/处理状态：只有 success 才把播放地址交给业务表单，queued/processing 都继续等待。
 const waitVideoProcessFinish = async (fileHash, progresscb) => {
     let lastPercent = 80;
 
@@ -188,7 +193,7 @@ const waitVideoProcessFinish = async (fileHash, progresscb) => {
 
         const processInfo = statusRes.data || {};
         const serverProgress = Number(processInfo.progress || 0);
-        // 从 80% 开始展示后端转码进度，映射到 80%-99%，避免切片未完成时误显示 100%
+        // 从 80% 开始展示后端处理进度，queued 可能没有 progress，此时保持上一次进度不乱跳。
         lastPercent = Math.min(99, Math.max(lastPercent, 80 + Math.round(serverProgress * 0.2)));
         progresscb && progresscb(lastPercent, processInfo);
 
@@ -199,6 +204,12 @@ const waitVideoProcessFinish = async (fileHash, progresscb) => {
 
         if (processInfo.status === 'failed') {
             throw new Error(processInfo.errorMessage || processInfo.message || '视频处理失败');
+        }
+
+        // queued 表示后端任务还在排队，可能带 queuePosition；发布仍然只认 success。
+        if (processInfo.status === 'queued' || processInfo.status === 'processing') {
+            await sleep(VIDEO_PROCESS_POLL_INTERVAL);
+            continue;
         }
 
         await sleep(VIDEO_PROCESS_POLL_INTERVAL);
@@ -241,8 +252,8 @@ export async function uploadFileChunk(file, userId, cb, failcb, progresscb) {
                 cb && cb(videoUrl || processInfo.videoUrl, processInfo);
                 return;
             }
-            if (currentStatus === 'processing') {
-                message.info('视频已上传，正在等待后端处理');
+            if (currentStatus === 'queued' || currentStatus === 'processing') {
+                message.info(currentStatus === 'queued' ? '视频已上传，正在排队等待处理' : '视频已上传，正在等待后端处理');
                 const finishedInfo = await waitVideoProcessFinish(fileHash, progresscb);
                 cb && cb(finishedInfo.videoUrl || videoUrl, finishedInfo);
                 return;
@@ -266,8 +277,8 @@ export async function uploadFileChunk(file, userId, cb, failcb, progresscb) {
         }
 
         progresscb(80, { status: mergedStatus || 'processing', videoUrl: url, fileHash: mergedHash });
-        if (mergedStatus === 'processing') {
-            message.info('视频上传完成，正在后台切片');
+        if (mergedStatus === 'queued' || mergedStatus === 'processing') {
+            message.info(mergedStatus === 'queued' ? '视频上传完成，正在排队等待处理' : '视频上传完成，正在后台处理');
             const finishedInfo = await waitVideoProcessFinish(mergedHash, progresscb);
             cb && cb(finishedInfo.videoUrl || url, finishedInfo);
             return;

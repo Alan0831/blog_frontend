@@ -5,6 +5,7 @@ import { Button, Input, message, Upload, Progress, Select } from 'antd';
 import { uploadFileChunk } from '../../utils/uploadFile';
 import { getErrorMessage } from '../../utils/errorMessage';
 import { getAuthorizationHeader, handleAuthFailure, isAuthErrorResponse } from '../../utils/auth';
+import { getAjaxHeaders } from '../../utils/security';
 import { useSelector } from 'react-redux';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -27,6 +28,20 @@ const partitionOptions = [
   { value: 'codeStudy', label: '学习' },
   { value: 'chatter', label: '杂谈' },
 ];
+
+const getVideoProcessMessage = (processInfo = {}, fallback = '') => {
+  const { status, message: serverMessage, queuePosition, transcodeMode } = processInfo;
+  const modeText = transcodeMode ? `（处理模式：${transcodeMode}）` : '';
+
+  if (serverMessage) return `${serverMessage}${modeText}`;
+  if (status === 'queued') {
+    const queueText = queuePosition ? `，当前排队第 ${queuePosition} 位` : '';
+    return `视频已上传，正在排队等待处理${queueText}${modeText}`;
+  }
+  if (status === 'processing') return `视频正在后台处理${modeText}`;
+  if (status === 'success') return `视频已处理完成，可以发布${modeText}`;
+  return fallback;
+};
 
 function UploadVideo() {
   const [isEdit, setIsEdit] = useState(false);
@@ -58,7 +73,7 @@ function UploadVideo() {
     uploadAliveRef.current = false;
   }, []);
 
-  const isVideoProcessing = videoProcessStatus === 'processing';
+  const isVideoProcessing = videoProcessStatus === 'queued' || videoProcessStatus === 'processing';
   const isVideoFailed = videoProcessStatus === 'failed';
   const isVideoReady = Boolean(videoUrl) && !isVideoProcessing && !isVideoFailed;
 
@@ -153,7 +168,7 @@ function UploadVideo() {
       return false;
     }
     if (isVideoProcessing) {
-      message.warning('视频仍在后台处理中，请等待完成后再发布');
+      message.warning(videoProcessStatus === 'queued' ? '视频还在排队等待处理，请完成后再发布' : '视频仍在后台处理中，请等待完成后再发布');
       return false;
     }
     if (isVideoFailed) {
@@ -262,7 +277,7 @@ function UploadVideo() {
         setVideoUrl(url);
         setVideoFileHash(processInfo.fileHash || '');
         setVideoProcessStatus('success');
-        setVideoProcessMessage(processInfo.message || '视频已处理完成，可以发布');
+        setVideoProcessMessage(getVideoProcessMessage(processInfo, '视频已处理完成，可以发布'));
         setPercent(100);
         setVideoUploading(false);
         config.onSuccess?.({ url, processInfo });
@@ -283,15 +298,17 @@ function UploadVideo() {
       },
       (nextPercent, processInfo = {}) => {
         if (!uploadAliveRef.current) return;
-        // 80% 以后是后端切片/转码阶段，保持进度条活跃并更新状态文案
+        // 80% 以后只展示后端状态；queued/processing 都不能发布，success 才回填可用播放地址。
         const nextValue = Math.max(1, Math.round(nextPercent));
         setPercent(nextValue);
         if (processInfo.fileHash) setVideoFileHash(processInfo.fileHash);
         if (processInfo.status) setVideoProcessStatus(processInfo.status);
-        if (processInfo.message) setVideoProcessMessage(processInfo.message);
+        if (processInfo.status || processInfo.message || processInfo.transcodeMode) {
+          setVideoProcessMessage(getVideoProcessMessage(processInfo, '视频正在后台处理'));
+        }
         if (!processInfo.status && nextValue >= 80 && nextValue < 100) {
           setVideoProcessStatus('processing');
-          setVideoProcessMessage('视频正在后台切片');
+          setVideoProcessMessage('视频正在后台处理');
         }
       },
     ).catch((error) => {
@@ -318,6 +335,8 @@ function UploadVideo() {
       const res = await axios.post('/commit/api/uploadImage', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
+          // 图片直传绕过 request 封装，手动带上 AJAX 标识和登录头。
+          ...getAjaxHeaders('post'),
           ...getAuthorizationHeader(),
         },
       }).catch((error) => {
