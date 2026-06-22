@@ -60,6 +60,8 @@ function Header() {
     const [headerVisible, setHeaderVisible] = useState(true);
     const headerRef = useRef(null);
     const oldScroll = useRef(0);
+    const scrollFrameRef = useRef(null);
+    const headerVisibleRef = useRef(true);
     const noticeSocketRef = useRef(null);
     const noticeReconnectTimerRef = useRef(null);
     const noticeReconnectTimesRef = useRef(0);
@@ -187,9 +189,26 @@ function Header() {
     }, [location]);
 
     useEffect(() => {
-        document.addEventListener('scroll', handleScroll, true);
+        const handleScroll = () => {
+            if (scrollFrameRef.current) return;
+
+            scrollFrameRef.current = window.requestAnimationFrame(() => {
+                const scrollPosition = window.scrollY;
+                const isVisible = scrollPosition < headerHeight || oldScroll.current > scrollPosition;
+                oldScroll.current = scrollPosition;
+                scrollFrameRef.current = null;
+
+                if (headerVisibleRef.current !== isVisible) {
+                    headerVisibleRef.current = isVisible;
+                    setHeaderVisible(isVisible);
+                }
+            });
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
         return () => {
-            document.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('scroll', handleScroll);
+            if (scrollFrameRef.current) window.cancelAnimationFrame(scrollFrameRef.current);
         };
     }, []);
 
@@ -303,13 +322,6 @@ function Header() {
     }, [loginStatus, userInfo.username, userInfo.userId]);
 
     // 监听页面滚动时间
-    const handleScroll = () => {
-        const scrollPosition = window.scrollY;
-        let isVisible = scrollPosition < headerHeight || oldScroll.current > scrollPosition;
-        setHeaderVisible(isVisible);
-        oldScroll.current = scrollPosition; 
-    };
-
     //  监听userInfo变化
     useListener('getLogin', type => {
         setLoginStatus(true);

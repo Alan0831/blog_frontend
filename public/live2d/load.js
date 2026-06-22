@@ -53,7 +53,7 @@ const initConfig = {
   night: 'toggleNightMode()',
   music: {
     volume: 0.35,
-    autoplay: true,
+    autoplay: false,
     random: true,
     tracks: [
       {
@@ -276,4 +276,9 @@ function onModelLoad(model) {
 }
 
 var pio_reference;
-window.onload = loadLive2D;
+// 兼容普通脚本与首屏后的动态加载：页面已完成时直接初始化，否则等待 load 事件。
+if (document.readyState === 'complete') {
+  loadLive2D();
+} else {
+  window.addEventListener('load', loadLive2D, { once: true });
+}

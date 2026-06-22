@@ -167,4 +167,9 @@ let pio_alignment = "right"
 
 let app
 let pio_live2d_disabled = false
-window.addEventListener("DOMContentLoaded", _pio_initialize_pixi)
+// 动态加载时 DOMContentLoaded 可能已经触发，需要立即创建 Live2D 容器。
+if (document.readyState === "loading") {
+    window.addEventListener("DOMContentLoaded", _pio_initialize_pixi, { once: true })
+} else {
+    _pio_initialize_pixi()
+}

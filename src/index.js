@@ -11,14 +11,14 @@ import { Provider as BusProvider } from './hooks/useBus'
 // redux
 import { Provider } from 'react-redux'
 import store from './redux'
+import PageLoading from './components/PageLoading';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <BusProvider>
     <Provider store={store}>
       <BrowserRouter>
-        <Suspense>
-        {/* <Suspense fallback={<Spin size="large" />}> */}
+        <Suspense fallback={<PageLoading />}>
           <App />
         </Suspense>
       </BrowserRouter>

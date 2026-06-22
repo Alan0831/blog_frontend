@@ -6,21 +6,32 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" href="./favicon.ico ">
+  <link rel="preconnect" href="https://commit-alan.oss-cn-beijing.aliyuncs.com" crossorigin>
+  <link rel="dns-prefetch" href="//commit-alan.oss-cn-beijing.aliyuncs.com">
   <title>
     <%= htmlWebpackPlugin.options.title %>
   </title>
-  <script defer="defer" src="/live2d/TweenLite.js"></script>
-  <script defer="defer" src="/live2d/live2dcubismcore.min.js"></script>
-  <script defer="defer" src="/live2d/pixi.min.js"></script>
-  <script defer="defer" src="/live2d/cubism4.min.js"></script>
-  <script defer="defer" src="/live2d/pio.js"></script>
-  <script defer="defer" src="/live2d/pio_sdk4.js"></script>
-  <script defer="defer" src="/live2d/load.js"></script>
-  <link defer="defer" rel="stylesheet" type="text/css" href="/live2d/pio.css" />
+  <style>
+    /* React 启动前的轻量首屏骨架，避免弱网下载入口脚本期间出现白屏。 */
+    .app-boot { position: fixed; inset: 0; min-height: 100vh; padding: 70px 5vw; box-sizing: border-box; background: #f4f7f8; }
+    .app-boot__bar { width: min(520px, 72%); height: 44px; margin: 0 auto 24px; border-radius: 14px; background: #e4edef; }
+    .app-boot__body { width: min(860px, 100%); margin: auto; }
+    .app-boot__item { height: 118px; margin-bottom: 16px; border: 1px solid #dce8ea; border-radius: 18px; background: rgba(255, 255, 255, .78); }
+    @media (max-width: 768px) { .app-boot { padding: 62px 16px 24px; } }
+  </style>
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <main class="app-boot" aria-label="页面加载中" aria-busy="true">
+      <div class="app-boot__bar"></div>
+      <div class="app-boot__body">
+        <div class="app-boot__item"></div>
+        <div class="app-boot__item"></div>
+        <div class="app-boot__item"></div>
+      </div>
+    </main>
+  </div>
 </body>
 
 </html>

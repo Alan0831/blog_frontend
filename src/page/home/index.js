@@ -93,7 +93,7 @@ export default function Home() {
         const initialMenuType = initialTopic === 'chatter' && initialMenuMap[initialTopic] == 3 ? 1 : initialMenuMap[initialTopic];
         setActiveTopic(initialTopic);
         setMenuTypeByTopic({ ...initialMenuMap, [initialTopic]: initialMenuType });
-        loadInitialData();
+        loadInitialData(initialTopic, initialMenuType);
     }, []);
 
     // 获取tag列表
@@ -203,21 +203,19 @@ export default function Home() {
         }
     }
 
-    const loadInitialData = async () => {
+    const loadInitialData = async (topicKey, type) => {
         setLoading(true);
-        const tasks = topicTabs.flatMap((topic) => {
-            const topicTasks = [
-                getRecommendArticleList(1, 10, '', topic.key),
-                getRecommendVideoList(1, 10, '', topic.key),
-                getArticleList(1, 10, '', topic.key, false),
-                getVideoList(1, 10, '', topic.key, false),
-                getTagList(topic.key),
-            ];
-            if (topic.menuTypes.includes(3)) {
-                topicTasks.push(getCodeTopicList(1, 10, '', topic.key, false));
-            }
-            return topicTasks;
-        });
+        // 首屏只请求当前可见栏目，其余栏目在用户切换时再加载，避免一次并发十余个接口。
+        const tasks = [getTagList(topicKey)];
+        if (type == 1) {
+            tasks.push(getArticleList(1, 10, '', topicKey, false));
+            tasks.push(getRecommendArticleList(1, 10, '', topicKey));
+        } else if (type == 2) {
+            tasks.push(getVideoList(1, 10, '', topicKey, false));
+            tasks.push(getRecommendVideoList(1, 10, '', topicKey));
+        } else {
+            tasks.push(getCodeTopicList(1, 10, '', topicKey, false));
+        }
 
         try {
             await Promise.allSettled(tasks);

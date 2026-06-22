@@ -32,6 +32,16 @@
   pointer-events: none;
 }
 
+// 首张卡片通常是 LCP 元素，直接显示可避免入场动画额外推迟指标。
+.chatter-post-card:first-child {
+  animation: none;
+}
+
+.chatter-post-card:nth-child(n + 4) {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--chatter-list-card-height, 274px);
+}
+
 .chatter-post-card:hover {
   border-color: rgba(216, 107, 134, 0.42);
   box-shadow:

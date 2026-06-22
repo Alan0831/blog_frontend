@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Empty, Input, Pagination } from 'antd';
 import AlanCard from '../alanCard';
 import MenuType from '../menuType';
 import Recommend from '../Recommend';
 import TagCard from '../TagCard';
-import ChatterNebulaScene from '../ChatterNebulaScene';
 import ChatterPostCard from '../ChatterPostCard';
 import ChatterCodeCard from '../ChatterCodeCard';
 import './index.less';
 
+const ChatterNebulaScene = lazy(() => import('../ChatterNebulaScene'));
+
 function ChatterZone(props) {
+  const [showNebula, setShowNebula] = useState(false);
   const {
     topicTabs,
     activeTopic,
@@ -35,6 +37,12 @@ function ChatterZone(props) {
     onClickMenu,
     onChangePage,
   } = props;
+
+  useEffect(() => {
+    // Three.js 仅用于装饰背景，正文和 LCP 图片稳定后再加载，避免阻塞首页内容。
+    const timer = window.setTimeout(() => setShowNebula(true), 2800);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const currentList = menuType == 1
     ? activeArticleList
@@ -83,7 +91,11 @@ function ChatterZone(props) {
 
   return (
     <section className={`chatter-zone ${menuType == 3 ? 'is-code-mode' : ''}`}>
-      <ChatterNebulaScene />
+      {showNebula ? (
+        <Suspense fallback={null}>
+          <ChatterNebulaScene />
+        </Suspense>
+      ) : null}
       <div className='chatter-zone__veil' />
       <div className='chatter-zone__inner'>
         <aside className='chatter-zone__left'>

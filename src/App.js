@@ -6,6 +6,7 @@ import Header from './components/header';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useEffect } from 'react';
 import { getValidUserInfo } from './utils/auth';
+import { loadLive2dWhenIdle } from './utils/loadLive2d';
 function App() {
   const location = useLocation();
 
@@ -19,6 +20,7 @@ function App() {
       body.classList.add('dark');
       header.classList.add('dark');
     }
+    loadLive2dWhenIdle();
   }, [])
   return (
     <div className="App">

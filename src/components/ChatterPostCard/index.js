@@ -5,6 +5,7 @@ import { CommentOutlined, EyeOutlined, LockTwoTone, StarOutlined, TagOutlined } 
 import { calcCommentsCount } from '../../utils';
 import { request } from '../../utils/request';
 import { CHATTER_FALLBACK_COVER, getChatterPostMeta } from '../../utils/chatter';
+import { getCoverSrcSet, getOptimizedCoverUrl } from '../../utils/image';
 import './index.less';
 
 function ChatterPostCard(props) {
@@ -14,6 +15,8 @@ function ChatterPostCard(props) {
   const navigate = useNavigate();
   const meta = useMemo(() => getChatterPostMeta(post, type), [post, type]);
   const isLocked = post.visibleType === 2 && post.userId !== userInfo.userId;
+  const cover = meta.cover || CHATTER_FALLBACK_COVER;
+  const isPriorityCover = index === 0;
 
   // 锁定内容先走密码弹窗，非锁定内容直接跳转到现有详情页。
   const gotoPost = () => {
@@ -61,7 +64,17 @@ function ChatterPostCard(props) {
       onClick={gotoPost}
     >
       <div className='chatter-post-card__media'>
-        <img src={meta.cover || CHATTER_FALLBACK_COVER} alt={post.title || '杂谈封面'} />
+        <img
+          src={getOptimizedCoverUrl(cover)}
+          srcSet={getCoverSrcSet(cover)}
+          sizes='(max-width: 860px) calc(100vw - 24px), 34vw'
+          width='720'
+          height='540'
+          loading={isPriorityCover ? 'eager' : 'lazy'}
+          fetchPriority={isPriorityCover ? 'high' : 'auto'}
+          decoding={isPriorityCover ? 'auto' : 'async'}
+          alt={post.title || '杂谈封面'}
+        />
         <span className='chatter-post-card__kind'>{meta.kindLabel}</span>
       </div>
       <div className='chatter-post-card__body'>

@@ -2,7 +2,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WebpackBar = require('webpackbar'); 
-const { ProvidePlugin, DefinePlugin  } = require('webpack');
+const { ProvidePlugin } = require('webpack');
 const WebpackAssetsManifest = require('webpack-assets-manifest');
 
 module.exports = {
@@ -70,9 +70,6 @@ module.exports = {
     }),
     new ProvidePlugin({
       React: path.resolve(__dirname, '../', 'node_modules/react/index.js'),
-    }),
-    new DefinePlugin({ 
-      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV) 
     }),
     new WebpackAssetsManifest({
       output: 'asset-manifest.json',

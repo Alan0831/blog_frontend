@@ -3,10 +3,6 @@
   color: var(--color-text);
 }
 
-.App > div:not(.header) {
-  animation: page-enter 460ms var(--ease-smooth) both;
-}
-
 html::-webkit-scrollbar {
   width: 9px;
   height: 9px;
@@ -24,22 +20,4 @@ html::-webkit-scrollbar-thumb {
 
 html::-webkit-scrollbar-thumb:hover {
   background: rgba(38, 122, 143, 0.72);
-}
-
-@keyframes page-enter {
-  from {
-    opacity: 0;
-    transform: translate3d(0, 12px, 0);
-  }
-
-  to {
-    opacity: 1;
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .App > div:not(.header) {
-    animation: none;
-  }
 }

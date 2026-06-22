@@ -77,3 +77,9 @@ module.exports = merge(base, {
     }, 
   },
 })
+
+// 保持路由级第三方依赖独立，避免编辑器、播放器、Three.js 被并入首屏公共包。
+module.exports.optimization.splitChunks.minSize = 20 * 1024;
+module.exports.optimization.splitChunks.cacheGroups.vendors.name = false;
+module.exports.optimization.splitChunks.cacheGroups.antd.name = false;
+module.exports.optimization.splitChunks.cacheGroups.antd.priority = 20;
