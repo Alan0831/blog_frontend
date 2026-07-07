@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import './index.less'
 import { defaultMenuTypes } from '../../components/menuType';
 import ChatterZone from '../../components/ChatterZone';
+import { clearHomeScrollSnapshot, getHomeScrollSnapshot, saveHomeScrollSnapshot } from '../../utils/homeScroll';
 
 const topicTabs = [
     {
@@ -51,7 +52,34 @@ const getInitialMenuTypeByTopic = () => {
     };
 };
 
+const getRestoredHomeState = (snapshot) => {
+    if (!snapshot) return null;
+
+    const restoredTopic = topicTabs.some(item => item.key === snapshot.activeTopic)
+        ? snapshot.activeTopic
+        : getInitialTopic();
+
+    const topicInfo = getTopicInfo(restoredTopic);
+    const initialMenuMap = getInitialMenuTypeByTopic();
+    const restoredMenuType = Number(snapshot.menuType);
+    const initialMenuType = initialMenuMap[restoredTopic] || topicInfo.menuTypes[0];
+    const nextMenuType = topicInfo.menuTypes.includes(restoredMenuType)
+        ? restoredMenuType
+        : (topicInfo.menuTypes.includes(initialMenuType) ? initialMenuType : topicInfo.menuTypes[0]);
+    const restoredPageNum = Number(snapshot.pageNum);
+
+    return {
+        activeTopic: restoredTopic,
+        menuType: nextMenuType,
+        pageNum: Number.isFinite(restoredPageNum) && restoredPageNum > 0 ? restoredPageNum : 1,
+        keyword: typeof snapshot.keyword === 'string' ? snapshot.keyword : '',
+        searchedKeyword: typeof snapshot.searchedKeyword === 'string' ? snapshot.searchedKeyword : '',
+        scrollY: Number(snapshot.scrollY) || 0,
+    };
+};
+
 export default function Home() {
+    const [restoredHomeState] = useState(() => getRestoredHomeState(getHomeScrollSnapshot()));
     const [articleListByTopic, setArticleListByTopic] = useState({});
     const [videoListByTopic, setVideoListByTopic] = useState({});
     const [codeListByTopic, setCodeListByTopic] = useState({});
@@ -63,9 +91,17 @@ export default function Home() {
     const [videoRecommendByTopic, setVideoRecommendByTopic] = useState({});
     const [tagListByTopic, setTagListByTopic] = useState({});
     const [keywordByView, setKeywordByView] = useState({});
-    const [searchedKeywords, setSearchedKeywords] = useState({});
-    const [activeTopic, setActiveTopic] = useState(getInitialTopic);
-    const [menuTypeByTopic, setMenuTypeByTopic] = useState(getInitialMenuTypeByTopic);
+    const [searchedKeywords, setSearchedKeywords] = useState(() => (
+        restoredHomeState
+            ? { [`${restoredHomeState.activeTopic}-${restoredHomeState.menuType}`]: restoredHomeState.searchedKeyword }
+            : {}
+    ));
+    const [activeTopic, setActiveTopic] = useState(() => restoredHomeState?.activeTopic || getInitialTopic());
+    const [menuTypeByTopic, setMenuTypeByTopic] = useState(() => {
+        const initialMenuMap = getInitialMenuTypeByTopic();
+        if (!restoredHomeState) return initialMenuMap;
+        return { ...initialMenuMap, [restoredHomeState.activeTopic]: restoredHomeState.menuType };
+    });
     const userInfo = useSelector(state => state.user);
     const menuType = menuTypeByTopic[activeTopic] || 1;
     const activeViewKey = `${activeTopic}-${menuType}`;
@@ -88,12 +124,23 @@ export default function Home() {
     const activeTagList = tagListByTopic[activeTopic] || [];
 
     useEffect(() => {
-        const initialTopic = getInitialTopic();
+        const initialTopic = restoredHomeState?.activeTopic || getInitialTopic();
         const initialMenuMap = getInitialMenuTypeByTopic();
-        const initialMenuType = initialTopic === 'chatter' && initialMenuMap[initialTopic] == 3 ? 1 : initialMenuMap[initialTopic];
+        const initialMenuType = restoredHomeState?.menuType || (initialTopic === 'chatter' && initialMenuMap[initialTopic] == 3 ? 1 : initialMenuMap[initialTopic]);
+        const initialPageNum = restoredHomeState?.pageNum || 1;
+        const initialKeyword = restoredHomeState?.keyword || '';
+        const initialSearchKeyword = restoredHomeState?.searchedKeyword || '';
+        const initialViewKey = `${initialTopic}-${initialMenuType}`;
         setActiveTopic(initialTopic);
         setMenuTypeByTopic({ ...initialMenuMap, [initialTopic]: initialMenuType });
-        loadInitialData(initialTopic, initialMenuType);
+        if (initialKeyword) {
+            setKeywordByView(prev => ({ ...prev, [initialViewKey]: initialKeyword }));
+        }
+        if (restoredHomeState) {
+            setSearchedKeywords(prev => ({ ...prev, [initialViewKey]: restoredHomeState.searchedKeyword }));
+        }
+        loadInitialData(initialTopic, initialMenuType, initialPageNum, initialSearchKeyword)
+            .finally(() => restoreHomeScroll(restoredHomeState));
     }, []);
 
     // 获取tag列表
@@ -203,18 +250,18 @@ export default function Home() {
         }
     }
 
-    const loadInitialData = async (topicKey, type) => {
+    const loadInitialData = async (topicKey, type, page = 1, nextKeyword = '') => {
         setLoading(true);
         // 首屏只请求当前可见栏目，其余栏目在用户切换时再加载，避免一次并发十余个接口。
         const tasks = [getTagList(topicKey)];
         if (type == 1) {
-            tasks.push(getArticleList(1, 10, '', topicKey, false));
+            tasks.push(getArticleList(page, 10, nextKeyword, topicKey, false));
             tasks.push(getRecommendArticleList(1, 10, '', topicKey));
         } else if (type == 2) {
-            tasks.push(getVideoList(1, 10, '', topicKey, false));
+            tasks.push(getVideoList(page, 10, nextKeyword, topicKey, false));
             tasks.push(getRecommendVideoList(1, 10, '', topicKey));
         } else {
-            tasks.push(getCodeTopicList(1, 10, '', topicKey, false));
+            tasks.push(getCodeTopicList(page, 10, nextKeyword, topicKey, false));
         }
 
         try {
@@ -238,6 +285,32 @@ export default function Home() {
             getCodeTopicList(page, 10, nextKeyword, topicKey);
         }
         getTagList(topicKey);
+    }
+
+    const restoreHomeScroll = (snapshot) => {
+        if (!snapshot) return;
+
+        const targetY = Number(snapshot.scrollY) || 0;
+        window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+                window.scrollTo({
+                    top: targetY,
+                    left: 0,
+                    behavior: 'auto',
+                });
+                clearHomeScrollSnapshot();
+            });
+        });
+    }
+
+    const saveCurrentHomeScroll = () => {
+        saveHomeScrollSnapshot({
+            activeTopic,
+            menuType,
+            pageNum,
+            keyword,
+            searchedKeyword: searchedKeywords[activeViewKey] || '',
+        });
     }
 
     //  点击顶部标签页
@@ -319,6 +392,7 @@ export default function Home() {
                         onClickTopic={clickTopic}
                         onClickMenu={clickMenu}
                         onChangePage={changePage}
+                        onBeforeOpenPost={saveCurrentHomeScroll}
                     />
                 </div>
             </div>

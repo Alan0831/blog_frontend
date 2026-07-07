@@ -4,8 +4,8 @@
 }
 
 html::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: var(--app-scrollbar-size);
+  height: var(--app-scrollbar-size);
 }
 
 html::-webkit-scrollbar-track {

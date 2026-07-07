@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { EyeOutlined, TagOutlined, CommentOutlined, StarOutlined, LockTwoTone } from '@ant-design/icons';
 import { calcCommentsCount } from '../../utils';
 import { request } from '../../utils/request';
+import { saveHomeScrollSnapshot } from '../../utils/homeScroll';
 import './index.less'
 /**
  * 视频卡片
@@ -27,6 +28,7 @@ function VideoCard(props) {
       setPassword('');
       setModalOpen(true);
     } else {
+      saveHomeScrollSnapshot();
       navigate(`/video/${videoInfo.id}`);
     }
   }
@@ -44,6 +46,7 @@ function VideoCard(props) {
     const res = await request('/validateArticleLock', { data: obj });
     if (res.status == 200) {
       message.success('解锁成功！');
+      saveHomeScrollSnapshot();
       navigate(`/article/${videoInfo.id}`);
     } else {
       message.error(res.errorMessage);

@@ -36,6 +36,7 @@ function ChatterZone(props) {
     onClickTopic,
     onClickMenu,
     onChangePage,
+    onBeforeOpenPost,
   } = props;
 
   useEffect(() => {
@@ -73,6 +74,7 @@ function ChatterZone(props) {
         <ChatterCodeCard
           codeInfo={item}
           index={index}
+          onBeforeOpenPost={onBeforeOpenPost}
           key={item.id}
         />
       ));
@@ -84,6 +86,7 @@ function ChatterZone(props) {
         type={menuType == 1 ? 'article' : 'video'}
         userInfo={userInfo}
         index={index}
+        onBeforeOpenPost={onBeforeOpenPost}
         key={item.id}
       />
     ));
@@ -141,7 +144,7 @@ function ChatterZone(props) {
 
         {menuType !== 3 ? (
           <aside className='chatter-zone__right'>
-            <Recommend type={menuType == 1 ? 1 : 3} articleList={recommendListData} />
+            <Recommend type={menuType == 1 ? 1 : 3} articleList={recommendListData} onBeforeOpenPost={onBeforeOpenPost} />
             <TagCard tagList={activeTagList} />
           </aside>
         ) : null}

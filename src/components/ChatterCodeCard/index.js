@@ -5,7 +5,7 @@ import { CodeOutlined, StarOutlined, StarTwoTone } from '@ant-design/icons';
 import './index.less';
 
 function ChatterCodeCard(props) {
-  const { codeInfo = {}, index = 0 } = props;
+  const { codeInfo = {}, index = 0, onBeforeOpenPost } = props;
   const { title, difficult, id, createdAt, isCollected } = codeInfo;
   const navigate = useNavigate();
   const difficultyText = difficult < 3 ? '简单' : difficult < 5 ? '中等' : '困难';
@@ -13,6 +13,7 @@ function ChatterCodeCard(props) {
 
   // 代码题目仍然跳转到原详情页，只替换首页列表的视觉呈现。
   const gotoCodePage = () => {
+    onBeforeOpenPost?.();
     navigate(`/code/${id}`);
   };
 

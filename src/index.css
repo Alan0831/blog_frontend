@@ -16,6 +16,7 @@
   --shadow-control: 0 10px 26px -20px rgba(20, 36, 48, 0.5);
   --radius-sm: 6px;
   --radius-md: 8px;
+  --app-scrollbar-size: 9px;
   --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
   --duration-fast: 180ms;
   --duration-normal: 320ms;
@@ -29,6 +30,7 @@
 
 html {
   min-height: 100%;
+  overflow-y: scroll;
   scroll-behavior: smooth;
   text-size-adjust: 100%;
   -webkit-text-size-adjust: 100%;
@@ -44,6 +46,10 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body.ant-scrolling-effect {
+  width: calc(100% - var(--app-scrollbar-size)) !important;
 }
 
 #root {

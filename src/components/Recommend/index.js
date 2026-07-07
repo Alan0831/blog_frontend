@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { useSelector } from 'react-redux';
 import { request } from '../../utils/request';
+import { saveHomeScrollSnapshot } from '../../utils/homeScroll';
 import { getOptimizedCoverUrl } from '../../utils/image';
 
 import './index.less';
@@ -29,7 +30,7 @@ const formatDate = value => {
 };
 
 /** type: 1 热门文章 / 2 猜你喜欢 / 3 热门视频 */
-function Recommend({ type = 1, articleList = [] }) {
+function Recommend({ type = 1, articleList = [], onBeforeOpenPost }) {
     const [modalOpen, setModalOpen] = useState(false);
     const [password, setPassword] = useState('');
     const [currentArticleId, setCurrentArticleId] = useState('');
@@ -38,6 +39,13 @@ function Recommend({ type = 1, articleList = [] }) {
     const config = RECOMMEND_CONFIG[type] || RECOMMEND_CONFIG[1];
     const HeaderIcon = config.icon;
     const listData = Array.isArray(articleList) ? articleList : [];
+    const saveScrollBeforeOpen = () => {
+        if (onBeforeOpenPost) {
+            onBeforeOpenPost();
+            return;
+        }
+        saveHomeScrollSnapshot();
+    };
 
     const gotoArticle = item => {
         if (type === 1 || type === 2) {
@@ -46,9 +54,11 @@ function Recommend({ type = 1, articleList = [] }) {
                 setCurrentArticleId(item.id);
                 setModalOpen(true);
             } else {
+                saveScrollBeforeOpen();
                 navigate(`/article/${item.id}`);
             }
         } else {
+            saveScrollBeforeOpen();
             navigate(`/video/${item.id}`);
         }
     };
@@ -65,6 +75,7 @@ function Recommend({ type = 1, articleList = [] }) {
         if (res.status == 200) {
             message.success('解锁成功！');
             setModalOpen(false);
+            saveScrollBeforeOpen();
             navigate(`/article/${currentArticleId}`);
         } else {
             message.error(res.errorMessage);

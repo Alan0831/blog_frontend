@@ -9,7 +9,7 @@ import { getCoverSrcSet, getOptimizedCoverUrl } from '../../utils/image';
 import './index.less';
 
 function ChatterPostCard(props) {
-  const { post, type = 'article', userInfo, index = 0 } = props;
+  const { post, type = 'article', userInfo, index = 0, onBeforeOpenPost } = props;
   const [modalOpen, setModalOpen] = useState(false);
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ function ChatterPostCard(props) {
       setModalOpen(true);
       return;
     }
+    onBeforeOpenPost?.();
     navigate(meta.route);
   };
 
@@ -44,6 +45,7 @@ function ChatterPostCard(props) {
 
     if (res.status == 200) {
       message.success('解锁成功');
+      onBeforeOpenPost?.();
       navigate(meta.route);
       return;
     }
