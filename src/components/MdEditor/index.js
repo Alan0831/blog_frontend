@@ -34,7 +34,7 @@ const defaultTagsList = [
   { tagName: 'Java', id: 2, key: '2' },
   { tagName: 'php', id: 3, key: '3' },
   { tagName: 'Python', id: 4, key: '4' },
-  { tagName: 'c语言', id: 5, key: '5' },
+  { tagName: 'c', id: 5, key: '5' },
   { tagName: 'c++', id: 6, key: '6' },
   { tagName: 'c#', id: 7, key: '7' },
   { tagName: 'css', id: 8, key: '8' },

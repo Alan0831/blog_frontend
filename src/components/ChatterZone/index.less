@@ -1,7 +1,7 @@
 .chatter-zone {
   position: relative;
   min-height: calc(100dvh - 45px);
-  overflow: hidden;
+  overflow: visible;
   color: #17212b;
   background:
     radial-gradient(circle at 12% 10%, rgba(242, 164, 184, 0.28), transparent 28%),
@@ -36,6 +36,29 @@
   min-width: 0;
 }
 
+.chatter-zone__left,
+.chatter-zone__right {
+  position: sticky;
+  top: 72px;
+  align-self: start;
+  display: grid;
+  gap: 16px;
+  max-height: calc(100dvh - 88px);
+  overflow-y: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(38, 122, 143, 0.28) transparent;
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(38, 122, 143, 0.26);
+  }
+}
+
 .chatter-zone__left {
   border-right: 1px solid rgba(36, 74, 87, 0.14);
 }
@@ -46,7 +69,7 @@
 
 .chatter-zone__search {
   width: 90%;
-  margin: 16px auto;
+  margin: 0 auto;
 }
 
 .chatter-zone__search .ant-input {
@@ -212,6 +235,9 @@
 }
 
 .chatter-zone .sidebar-card.ant-card {
+  width: 90%;
+  min-width: 0;
+  margin: 0 auto;
   background: rgba(255, 255, 255, 0.66);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
@@ -240,7 +266,21 @@
 
   .chatter-zone__left,
   .chatter-zone__right {
+    position: static;
+    display: block;
+    max-height: none;
+    overflow: visible;
     border: 0;
+  }
+
+  .chatter-zone .sidebar-card.ant-card {
+    width: 100%;
+    margin: 12px 0;
+  }
+
+  .chatter-zone__search {
+    width: 100%;
+    margin: 12px 0;
   }
 
   .chatter-zone__right {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom';
 import './index.less'
-import { Divider, Spin, message, Tag, BackTop, Anchor, Image } from 'antd'
+import { Divider, Spin, message, Tag, BackTop } from 'antd'
 import Recommend from '../../components/Recommend'
 import AuthorInfo from '../../components/AuthorInfo'
 import Discuss from '../../components/Discuss';
@@ -9,8 +9,8 @@ import { request } from '../../utils/request';
 import { useSelector } from 'react-redux';
 import { EditOutlined, EyeOutlined, CommentOutlined, TagOutlined, StarOutlined, StarTwoTone } from '@ant-design/icons';
 import { calcCommentsCount, normalizeComments, parseMaybeJsonArray } from '../../utils';
-import { sanitizeRichText } from '../../utils/security';
 import { clickPreview } from '../../utils/imgreview';
+import { renderArticleContent } from '../../utils/markdown';
 import 'react-quill/dist/quill.snow.css';
 import Director from '../../components/director';
 
@@ -24,7 +24,7 @@ function Article() {
     const [recommendArticleListData, setRecommendArticleList] = useState([]);
     const [likeArticleListData, setLikeArticleListData] = useState([]);
     const [tagList, setTagList] = useState([]);
-    const [isHaveDirector, setIsHaveDirector] = useState(false);
+    const [directorList, setDirectorList] = useState([]);
     const [article, setArticle] = useState({
         title: '',
         content: '',
@@ -35,7 +35,8 @@ function Article() {
         tagList: '',
     });
     const userInfo = useSelector(state => state.user);
-    const { content, title, createdAt, viewCount, comments, goodCount, collectionCount, isCollected } = article;
+    const { content, title, createdAt, viewCount, comments, collectionCount, isCollected } = article;
+    const hasDirector = directorList.length > 0;
 
     useEffect(() => {
         window.scrollTo({
@@ -45,17 +46,6 @@ function Article() {
         });
         loadArticlePage();
     }, [id]);
-
-    useEffect(() => {
-        if (article.content) {
-            let images = document.getElementsByClassName('preview');
-            // 给图片绑定点击预览事件
-            Array.from(images).map((item) => {
-                console.log(item);
-                item.onclick = () => clickPreview(item.src);
-            })
-        }
-    }, [article.content]);
 
     //  获取今日推荐文章列表
     const loadArticlePage = async () => {
@@ -124,17 +114,12 @@ function Article() {
         let res = await request('/findArticleById', { data: { id: parseInt(id), owner: parseInt(userInfo.userId) } });
         if (res.status == 200) {
             let data = res.data;
-            data.content = (data.content || '').replace(/(\n|\r|\r\n|↵)/g, '<br />');
-            data.content = replaceImgWithAntdImage(data.content);
-            // 后端返回的是可渲染 HTML，进入 dangerouslySetInnerHTML 前必须按白名单净化。
-            data.content = sanitizeRichText(data.content);
-            let isHaveDirector = data.content.includes('<ol>');
+            const renderedArticle = renderArticleContent(data.content);
             const pagedComments = await getComments();
+            data.content = renderedArticle.html;
             data.comments = pagedComments !== null ? pagedComments : normalizeComments(data);
-            setIsHaveDirector(isHaveDirector);
             setArticle(data);
-            let images = document.getElementsByClassName('preview');
-            console.log(images);
+            setDirectorList(renderedArticle.headings);
             setTagList(parseMaybeJsonArray(data.tagList));
             setAuthorInfo(data.user);
             return data;
@@ -143,19 +128,6 @@ function Article() {
         }
         return null;
     }
-
-    const replaceImgWithAntdImage = (str) => {
-        // 正则表达式匹配<img>标签
-        const regex = /<img[^>]*>/gi;
-        // 替换函数，将匹配到的<img>标签替换为<Image>标签
-        return str.replace(regex, (match) => {
-            // 将src解析出来
-            const srcMatch = match.match(/src="([^"]+)"/i);
-            const src = srcMatch ? srcMatch[1] : '';
-            // 返回<Image>标签字符串携带preview标志
-            return `<img src="${src}" class="preview" />`;
-        });
-    };
 
     const updateCollection = () => {
         if (isCollected) {
@@ -206,6 +178,13 @@ function Article() {
         setArticle(prevArticle => ({ ...prevArticle, comments: normalizeComments({ comments: commentList }) }));
     }
 
+    const handleContentClick = (event) => {
+        const target = event.target;
+        if (target?.tagName === 'IMG' && target.classList.contains('preview')) {
+            clickPreview(target.src);
+        }
+    }
+
     return (
         <Spin tip='加载中...' spinning={loading}>
             <article className='app-article'>
@@ -237,21 +216,23 @@ function Article() {
                         </span>
                     </div>
                 </div>
-                <div className='post-content'>
+                <div className={`post-content ${hasDirector ? 'has-director' : 'no-director'}`}>
                     <div className='article-userInfo'>
-                        <Anchor offsetTop={40}>
-                            <AuthorInfo authorInfo={authorInfo}></AuthorInfo>
-                            <Recommend type={1} articleList={recommendArticleListData}></Recommend>
-                            {likeArticleListData.length > 0 ? <Recommend type={2} articleList={likeArticleListData}></Recommend> : null}
-                        </Anchor>
+                        <AuthorInfo authorInfo={authorInfo}></AuthorInfo>
+                        <Recommend type={1} articleList={recommendArticleListData}></Recommend>
+                        {likeArticleListData.length > 0 ? <Recommend type={2} articleList={likeArticleListData}></Recommend> : null}
                     </div>
                     <div className='article-detail'>
-                        <div className='article_de2'><div dangerouslySetInnerHTML={{ __html: content }} /></div>
+                        <div
+                            className='article_de2 markdown-body'
+                            onClick={handleContentClick}
+                            dangerouslySetInnerHTML={{ __html: content }}
+                        />
                         <Discuss pageType={1} id={id} commentList={comments} setCommentList={setCommentList} />
                     </div>
-                    {isHaveDirector ? (
+                    {hasDirector ? (
                         <div className='article-director'>
-                            <Anchor offsetTop={40}><Director articleList={content}></Director></Anchor>
+                            <Director headings={directorList}></Director>
                         </div>
                     ) : null}
                 </div>
