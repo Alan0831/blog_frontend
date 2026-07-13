@@ -59,6 +59,7 @@ var Paul_Pio = function (prop) {
     },
     // 移除方法
     destroy: function () {
+      if (chatAssistant) chatAssistant.destroy();
       musicPlayer.stop();
       that.initHidden();
       localStorage.setItem('posterGirl', 0);
@@ -77,6 +78,7 @@ var Paul_Pio = function (prop) {
   var elements = {
     home: modules.create('span', { class: 'pio-home' }),
     skin: modules.create('span', { class: 'pio-skin' }),
+    chat: modules.create('span', { class: 'pio-chat' }),
     music: modules.create('span', { class: 'pio-music' }),
     // info: modules.create('span', { class: 'pio-info' }),
     night: modules.create('span', { class: 'pio-night' }),
@@ -261,6 +263,405 @@ var Paul_Pio = function (prop) {
     };
   })();
 
+  // Live2D AI 聊天模块：集中管理面板、消息缓存、请求发送和错误展示。
+  var chatAssistant = (function () {
+    var chatConfig = prop.chat || {};
+    var streamEndpoint = chatConfig.streamEndpoint || '/commit/api/live2d/chat/stream';
+    var storageKey = chatConfig.storageKey || 'live2dChatMessages';
+    var maxInputLength = Number(chatConfig.maxInputLength || 500);
+    var maxHistoryLength = Number(chatConfig.maxHistoryLength || 12);
+    var requestController = null;
+    var sending = false;
+    var messages = readMessages();
+
+    var panel = modules.create('div', { class: 'pio-chat-panel' });
+    var header = modules.create('div', { class: 'pio-chat-panel__header' });
+    var title = modules.create('div', { class: 'pio-chat-panel__title' });
+    var status = modules.create('div', { class: 'pio-chat-panel__status' });
+    var closeButton = modules.create('button', { class: 'pio-chat-panel__close' });
+    var messageList = modules.create('div', { class: 'pio-chat-panel__messages' });
+    var empty = modules.create('div', { class: 'pio-chat-panel__empty' });
+    var form = modules.create('form', { class: 'pio-chat-panel__form' });
+    var input = modules.create('textarea', { class: 'pio-chat-panel__input' });
+    var sendButton = modules.create('button', { class: 'pio-chat-panel__send' });
+
+    title.textContent = chatConfig.title || '网站小助手';
+    status.textContent = '可以问我本站功能';
+    closeButton.type = 'button';
+    closeButton.textContent = '×';
+    closeButton.setAttribute('aria-label', '关闭对话');
+    empty.textContent = chatConfig.emptyText || '问问我怎么发文章、上传视频、收藏内容。';
+    input.rows = 2;
+    input.maxLength = maxInputLength;
+    input.placeholder = chatConfig.placeholder || '输入你想问本站的问题';
+    sendButton.type = 'submit';
+    sendButton.textContent = '发送';
+
+    header.appendChild(title);
+    header.appendChild(status);
+    header.appendChild(closeButton);
+    messageList.appendChild(empty);
+    form.appendChild(input);
+    form.appendChild(sendButton);
+    panel.appendChild(header);
+    panel.appendChild(messageList);
+    panel.appendChild(form);
+    current.body.appendChild(panel);
+
+    function readMessages() {
+      try {
+        var saved = JSON.parse(sessionStorage.getItem(storageKey) || '[]');
+        return Array.isArray(saved) ? normalizeMessages(saved).slice(-maxHistoryLength) : [];
+      } catch (error) {
+        sessionStorage.removeItem(storageKey);
+        return [];
+      }
+    }
+
+    function saveMessages() {
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify(messages.slice(-maxHistoryLength)));
+      } catch (error) {
+        // 缓存失败不影响正常聊天，只是刷新后不保留本轮历史。
+      }
+    }
+
+    function normalizeMessages(list) {
+      return list.filter(function (item) {
+        return item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string';
+      }).map(function (item) {
+        return {
+          role: item.role,
+          content: item.content.trim().slice(0, 1200)
+        };
+      }).filter(function (item) {
+        return item.content;
+      });
+    }
+
+    // 消息一律用 textContent 渲染，避免用户输入或 AI 回复触发 XSS。
+    function createMessage(role, content) {
+      var item = modules.create('div', { class: 'pio-chat-message pio-chat-message--' + role });
+      var bubble = modules.create('div', { class: 'pio-chat-message__bubble' });
+      bubble.textContent = content;
+      item.appendChild(bubble);
+      item._bubble = bubble;
+      return item;
+    }
+
+    function scrollMessagesToBottom() {
+      messageList.scrollTop = messageList.scrollHeight;
+    }
+
+    function appendMessageElement(role, content) {
+      if (empty.parentNode === messageList) messageList.removeChild(empty);
+      var item = createMessage(role, content);
+      messageList.appendChild(item);
+      scrollMessagesToBottom();
+      return item;
+    }
+
+    function renderMessages() {
+      messageList.textContent = '';
+      if (!messages.length) {
+        messageList.appendChild(empty);
+      } else {
+        messages.forEach(function (item) {
+          messageList.appendChild(createMessage(item.role, item.content));
+        });
+      }
+      scrollMessagesToBottom();
+    }
+
+    function setSending(nextSending) {
+      sending = nextSending;
+      panel.classList.toggle('is-sending', sending);
+      input.disabled = sending;
+      sendButton.disabled = sending;
+      sendButton.textContent = sending ? '思考中' : '发送';
+      status.textContent = sending ? '正在组织回答' : '可以问我本站功能';
+    }
+
+    function pushMessage(role, content, skipSave) {
+      messages.push({ role: role, content: content });
+      messages = normalizeMessages(messages).slice(-maxHistoryLength);
+      if (!skipSave) saveMessages();
+      appendMessageElement(role, content);
+    }
+
+    function getPageContext() {
+      return {
+        path: location.pathname,
+        title: document.title || ''
+      };
+    }
+
+    function createRequestError(message, code) {
+      var error = new Error(message || '小助手暂时连不上，请稍后再试');
+      error.errorCode = code || 'AI_CHAT_FAILED';
+      return error;
+    }
+
+    function getErrorMessage(error) {
+      if (error && error.name === 'AbortError') return '';
+      if (error && error.errorCode === 'AI_CHAT_RATE_LIMITED') return '问得太快啦，稍等一下再继续';
+      if (error && error.errorCode === 'AI_CHAT_NOT_CONFIGURED') return 'AI 服务还没有配置完成';
+      return (error && error.message) || '小助手暂时连不上，请稍后再试';
+    }
+
+    function getReplyText(data, keepSpace) {
+      if (!data) return '';
+      var source = data.data || data;
+      var choice = source.choices && source.choices[0];
+      var text = String(
+        source.reply ||
+        source.content ||
+        source.text ||
+        source.message ||
+        source.delta ||
+        (choice && choice.delta && choice.delta.content) ||
+        (choice && choice.message && choice.message.content) ||
+        ''
+      );
+      return keepSpace ? text : text.trim();
+    }
+
+    function buildPayload(message, history) {
+      return {
+        message: message,
+        history: history,
+        page: getPageContext()
+      };
+    }
+
+    function parseSseChunk(chunk, onEvent) {
+      var eventName = '';
+      var dataLines = [];
+
+      chunk.split(/\r?\n/).forEach(function (line) {
+        if (line.indexOf('event:') === 0) eventName = line.slice(6).trim();
+        if (line.indexOf('data:') === 0) dataLines.push(line.slice(5).trim());
+      });
+
+      // SSE 不写 event 时浏览器默认按 message 事件处理，这里也保持一致。
+      if (!eventName) eventName = 'message';
+      if (!dataLines.length) return;
+
+      var rawData = dataLines.join('\n');
+      var data;
+      try {
+        data = JSON.parse(rawData);
+      } catch (error) {
+        // 兼容后端直接透传纯文本 token 的情况，避免一个非 JSON 片段中断整次对话。
+        data = rawData === '[DONE]' ? {} : { content: rawData };
+      }
+
+      onEvent(rawData === '[DONE]' ? 'done' : eventName, data);
+    }
+
+    // 使用 fetch + ReadableStream 支持 POST body 的 SSE；原生 EventSource 不能满足这里的请求形态。
+    async function sendLive2dStream(payload, onEvent, signal) {
+      var response = await fetch(streamEndpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream'
+        },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+        signal: signal
+      });
+
+      var contentType = response.headers.get('content-type') || '';
+      if (!response.ok || !response.body || contentType.indexOf('text/event-stream') === -1) {
+        var errorBody = await response.json().catch(function () { return {}; });
+        throw createRequestError(
+          errorBody.errorMessage || '小助手暂时连不上，请稍后再试',
+          errorBody.errorCode
+        );
+      }
+
+      var reader = response.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = '';
+
+      while (true) {
+        var result = await reader.read();
+        if (result.done) break;
+
+        buffer += decoder.decode(result.value, { stream: true });
+        var chunks = buffer.split(/\r?\n\r?\n/);
+        buffer = chunks.pop() || '';
+
+        chunks.forEach(function (chunk) {
+          parseSseChunk(chunk, onEvent);
+        });
+      }
+
+      if (buffer.trim()) parseSseChunk(buffer, onEvent);
+    }
+
+    // 把高频 token 更新合并到下一帧，避免每个 delta 都触发布局和滚动。
+    function createBubbleUpdater(messageNode) {
+      var frameId = 0;
+      var nextText = '';
+
+      function flush() {
+        frameId = 0;
+        if (messageNode && messageNode._bubble) {
+          messageNode._bubble.textContent = nextText;
+          scrollMessagesToBottom();
+        }
+      }
+
+      return {
+        update: function (text) {
+          nextText = text;
+          if (!frameId) frameId = window.requestAnimationFrame(flush);
+        },
+        flush: function (text) {
+          nextText = text;
+          if (frameId) {
+            window.cancelAnimationFrame(frameId);
+            frameId = 0;
+          }
+          flush();
+        }
+      };
+    }
+
+    function commitAssistantReply(reply) {
+      messages.push({ role: 'assistant', content: reply });
+      messages = normalizeMessages(messages).slice(-maxHistoryLength);
+      saveMessages();
+    }
+
+    async function sendMessage(text) {
+      if (sending) return;
+      var message = text.trim().slice(0, maxInputLength);
+      if (!message) return;
+
+      var history = messages.slice(-10);
+      pushMessage('user', message, true);
+      var assistantNode = appendMessageElement('assistant', '');
+      var updater = createBubbleUpdater(assistantNode);
+      var assistantDraft = '';
+      var completed = false;
+
+      input.value = '';
+      setSending(true);
+      modules.render('我想想...');
+
+      if (requestController) requestController.abort();
+      requestController = new AbortController();
+
+      var payload = buildPayload(message, history);
+
+      try {
+        await sendLive2dStream(payload, function (eventName, data) {
+          if (eventName === 'start') {
+            status.textContent = '正在接收回答';
+            return;
+          }
+
+          if (eventName === 'delta' || eventName === 'message' || eventName === 'token') {
+            assistantDraft += getReplyText(data, true);
+            updater.update(assistantDraft);
+            return;
+          }
+
+          if (eventName === 'done' || eventName === 'finish' || eventName === 'complete' || eventName === 'end') {
+            assistantDraft = getReplyText(data) || assistantDraft;
+            if (!assistantDraft.trim()) {
+              throw createRequestError('小助手没有返回完整内容');
+            }
+            completed = true;
+            updater.flush(assistantDraft);
+            commitAssistantReply(assistantDraft);
+            modules.render(assistantDraft.length > 36 ? assistantDraft.slice(0, 36) + '...' : assistantDraft);
+            return;
+          }
+
+          if (eventName === 'error') {
+            throw createRequestError(data && data.errorMessage, data && data.errorCode);
+          }
+        }, requestController.signal);
+
+        if (!completed) {
+          if (assistantDraft.trim()) {
+            completed = true;
+            updater.flush(assistantDraft);
+            commitAssistantReply(assistantDraft);
+          } else {
+            // 只使用流式接口：如果没有收到 delta/done 内容，直接提示后端流没有正确返回。
+            throw createRequestError('小助手没有返回完整内容');
+          }
+        }
+      } catch (error) {
+        if (!completed) {
+          var errorMessage = getErrorMessage(error);
+          if (messages.length && messages[messages.length - 1].role === 'user' && messages[messages.length - 1].content === message) {
+            messages.pop();
+          }
+          if (errorMessage) {
+            updater.flush(errorMessage);
+            modules.render(errorMessage);
+          }
+        }
+      } finally {
+        requestController = null;
+        setSending(false);
+        if (panel.classList.contains('is-open')) input.focus();
+      }
+    }
+
+    form.onsubmit = function (event) {
+      event.preventDefault();
+      sendMessage(input.value);
+    };
+
+    input.onkeydown = function (event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage(input.value);
+      }
+    };
+
+    closeButton.onclick = function () {
+      close();
+    };
+
+    function open() {
+      panel.classList.add('is-open');
+      elements.chat.classList.add('is-active');
+      renderMessages();
+      window.setTimeout(function () {
+        input.focus();
+      }, 80);
+    }
+
+    function close() {
+      panel.classList.remove('is-open');
+      elements.chat.classList.remove('is-active');
+      if (requestController) requestController.abort();
+    }
+
+    function toggle() {
+      panel.classList.contains('is-open') ? close() : open();
+    }
+
+    renderMessages();
+
+    return {
+      toggle: toggle,
+      close: close,
+      destroy: function () {
+        close();
+        if (requestController) requestController.abort();
+      }
+    };
+  })();
+
   /* - 提示操作 */
   var action = {
     // 欢迎
@@ -328,6 +729,25 @@ var Paul_Pio = function (prop) {
         prop.content.skin && prop.content.skin[0] ? modules.render(prop.content.skin[0]) : modules.render('想看看我的新衣服吗？');
       };
       if (prop.model.length > 1) current.menu.appendChild(elements.skin);
+
+      // AI 对话入口：只负责打开面板，具体请求和历史都交给 chatAssistant。
+      elements.chat.setAttribute('role', 'button');
+      elements.chat.setAttribute('tabindex', '0');
+      elements.chat.setAttribute('aria-label', '打开网站小助手');
+      elements.chat.setAttribute('title', '网站小助手');
+      elements.chat.onclick = function () {
+        chatAssistant.toggle();
+      };
+      elements.chat.onkeydown = function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          chatAssistant.toggle();
+        }
+      };
+      elements.chat.onmouseenter = function () {
+        modules.render('有网站问题可以问我。');
+      };
+      current.menu.appendChild(elements.chat);
 
       // 播放 / 暂停音乐
       if (prop.music !== false) {
@@ -509,6 +929,7 @@ var Paul_Pio = function (prop) {
   this.initHidden = function () {
     current.body.classList.add('hidden');
     dialog.classList.remove('active');
+    if (chatAssistant) chatAssistant.close();
 
     elements.show.onclick = function () {
       current.body.classList.remove('hidden');

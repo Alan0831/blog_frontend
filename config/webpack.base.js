@@ -87,7 +87,7 @@ module.exports = {
     historyApiFallback: true,
     proxy: [{
       context: ['/commit/api'],
-      target: 'http://127.0.0.1:3001',
+      target: 'http://127.0.0.1:6060',
       changeOrigin: true, // 是否跨域，虚拟的站点需要更管origin
       // 其他代理选项...
     }]

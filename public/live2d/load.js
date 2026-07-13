@@ -51,6 +51,14 @@ const initConfig = {
     homePort: '3000' // 首页domain端口号
   },
   night: 'toggleNightMode()',
+  chat: {
+    streamEndpoint: '/commit/api/live2d/chat/stream',
+    title: '网站小助手',
+    placeholder: '问问本站文章、视频或功能',
+    emptyText: '可以问我怎么发布文章、上传视频、收藏内容。',
+    maxInputLength: 500,
+    maxHistoryLength: 12
+  },
   music: {
     volume: 0.35,
     autoplay: false,

@@ -72,5 +72,5 @@ export const handleAuthFailure = (res = {}, messageApi) => {
     messageApi.error(getAuthErrorMessage(res));
   }
 
-  redirectToLogin();
+  // redirectToLogin();
 };

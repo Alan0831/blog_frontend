@@ -7,7 +7,7 @@ module.exports = function(app) {
                 '^/commit/api': '/commit/api'
             },
             // target: 'http://8.152.1.135:3001',
-            target: 'http://127.0.0.1:3001',
+            target: 'http://127.0.0.1:6060',
             changeOrigin: true,
         })
     )
